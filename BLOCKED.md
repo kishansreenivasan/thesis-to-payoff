@@ -16,7 +16,7 @@ Append new entries at the top. Format: DESIGN.md Section 14. Humans fill in "Dec
 
 ---
 
-## [Lane B] No 11 Dec 2026 BTC option expiry on Deribit testnet (OPEN)
+## [Lane B] No 11 Dec 2026 BTC option expiry on Deribit testnet (RESOLVED)
 - When: 2026-11-17 23:45 UTC
 - Task: preflight check for L1 (setup, before any lane started)
 - Expected: DESIGN.md Section 1/6.2: "BTC call expiring 11 Dec 2026" on Deribit testnet
@@ -27,7 +27,11 @@ Append new entries at the top. Format: DESIGN.md Section 14. Humans fill in "Dec
   2. Use 25DEC26 (expires after the Fed decision; covers the event; costs more premium).
   3. Use 4DEC26 (cheaper, but expires before the Fed decision and breaks the thesis).
 - Meanwhile: Lane B mocks and strategy code can use `BTC-11DEC26-<strike>-C` as a placeholder and select expiry at runtime.
-- Decision (filled by humans):
+- Decision (filled by humans): 2026-11-17. Wait, then fall back to 25DEC26.
+  L1 expiry is chosen at runtime: use 11DEC26 if Deribit testnet lists it, otherwise 25DEC26.
+  Lane B rechecks daily and records the result in STATUS.md. If 11DEC26 is still missing at
+  2026-11-18 17:00 UTC (Wed 12 PM ET, before the Wed 2 PM gate), build and test against 25DEC26.
+  UI and pitch copy must show the actual expiry used.
 
 ## [Lane B] FED261211 not in Gemini sandbox (RESOLVED)
 - When: 2026-11-17 22:00 UTC

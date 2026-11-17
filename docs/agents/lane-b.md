@@ -29,6 +29,7 @@ Tasks 1 and 5: now. Tasks 2 to 4: when Gemini and Deribit keys are in `.env`.
 
 ## Reminders
 
+- **L1 expiry (decided 2026-11-17, see BLOCKED.md):** prefer 11DEC26; if Deribit testnet does not list it, use 25DEC26. Select at runtime, never hardcode. Recheck daily alongside the FED261211 check.
 - Verify every endpoint against official docs first. Differences go in `CHANGES.md`; missing features go in `BLOCKED.md`.
 - Testnet only: cross the spread to fill; cancel after 30 s and report `REJECTED` / `NO_FILL`.
 - Note in `CHANGES.md` which perp you used for L2 (linear USDC perp vs `BTC-PERPETUAL`).
