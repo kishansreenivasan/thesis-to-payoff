@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.next/
+dist/
+*.sqlite
+*.db
+.DS_Store
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+coverage/

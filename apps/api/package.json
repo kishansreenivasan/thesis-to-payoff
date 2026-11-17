@@ -1,0 +1,20 @@
+{
+  "name": "@ttp/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ttp/mcp": "workspace:*",
+    "@ttp/risk": "workspace:*",
+    "@ttp/shared": "workspace:*",
+    "@ttp/strategy": "workspace:*",
+    "@ttp/treasury": "workspace:*",
+    "@ttp/venues": "workspace:*",
+    "fastify": "^5.1.0"
+  }
+}

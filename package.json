@@ -1,0 +1,27 @@
+{
+  "name": "thesis-to-payoff",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.0",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "check": "pnpm typecheck && pnpm lint && pnpm test",
+    "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r typecheck",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:contracts": "cd contracts && forge test",
+    "demo:mock": "tsx scripts/demo-mock.ts",
+    "dev:api": "pnpm --filter @ttp/api dev",
+    "dev:web": "pnpm --filter @ttp/web dev"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.15.0",
+    "@ttp/shared": "workspace:*",
+    "@types/node": "^22.9.0",
+    "eslint": "^9.15.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.15.0",
+    "vitest": "^2.1.8"
+  }
+}

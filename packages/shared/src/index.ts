@@ -1,0 +1,57 @@
+// @ttp/shared, owned by Lane C. Schemas are verbatim from DESIGN.md Section 5 (see schemas.ts).
+// Each name is both a Zod schema (value) and its inferred TypeScript type.
+import type { z } from "zod";
+import * as S from "./schemas";
+
+export const Source = S.Source;
+export type Source = z.infer<typeof S.Source>;
+export const Venue = S.Venue;
+export type Venue = z.infer<typeof S.Venue>;
+export const Dec = S.Dec;
+export type Dec = z.infer<typeof S.Dec>;
+export const ThesisIntent = S.ThesisIntent;
+export type ThesisIntent = z.infer<typeof S.ThesisIntent>;
+export const UnsupportedThesis = S.UnsupportedThesis;
+export type UnsupportedThesis = z.infer<typeof S.UnsupportedThesis>;
+export const LegType = S.LegType;
+export type LegType = z.infer<typeof S.LegType>;
+export const Leg = S.Leg;
+export type Leg = z.infer<typeof S.Leg>;
+export const StrategyPlan = S.StrategyPlan;
+export type StrategyPlan = z.infer<typeof S.StrategyPlan>;
+export const Quote = S.Quote;
+export type Quote = z.infer<typeof S.Quote>;
+export const GeminiEvent = S.GeminiEvent;
+export type GeminiEvent = z.infer<typeof S.GeminiEvent>;
+export const OrderRequest = S.OrderRequest;
+export type OrderRequest = z.infer<typeof S.OrderRequest>;
+export const OrderState = S.OrderState;
+export type OrderState = z.infer<typeof S.OrderState>;
+export const Order = S.Order;
+export type Order = z.infer<typeof S.Order>;
+export const VenuePosition = S.VenuePosition;
+export type VenuePosition = z.infer<typeof S.VenuePosition>;
+export const MarginSnapshot = S.MarginSnapshot;
+export type MarginSnapshot = z.infer<typeof S.MarginSnapshot>;
+export const RiskState = S.RiskState;
+export type RiskState = z.infer<typeof S.RiskState>;
+export const RiskInput = S.RiskInput;
+export type RiskInput = z.infer<typeof S.RiskInput>;
+export const RiskDecision = S.RiskDecision;
+export type RiskDecision = z.infer<typeof S.RiskDecision>;
+export const PositionState = S.PositionState;
+export type PositionState = z.infer<typeof S.PositionState>;
+export const PositionSnapshot = S.PositionSnapshot;
+export type PositionSnapshot = z.infer<typeof S.PositionSnapshot>;
+export const ReleaseState = S.ReleaseState;
+export type ReleaseState = z.infer<typeof S.ReleaseState>;
+export const TransferRequest = S.TransferRequest;
+export type TransferRequest = z.infer<typeof S.TransferRequest>;
+export const TreasuryStatus = S.TreasuryStatus;
+export type TreasuryStatus = z.infer<typeof S.TreasuryStatus>;
+export const PayoffGrid = S.PayoffGrid;
+export type PayoffGrid = z.infer<typeof S.PayoffGrid>;
+export const ActivityEvent = S.ActivityEvent;
+export type ActivityEvent = z.infer<typeof S.ActivityEvent>;
+
+export * from "./interfaces";
