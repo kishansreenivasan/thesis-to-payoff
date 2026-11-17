@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main, lane-a, lane-b, lane-c]
+  pull_request:
+
+jobs:
+  check:
+    name: pnpm check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm demo:mock
+
+  contracts:
+    name: forge test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+      - name: forge build and test
+        working-directory: contracts
+        run: |
+          if ls src/*.sol >/dev/null 2>&1; then
+            forge build
+            forge test -vvv
+          else
+            echo "No contracts yet; skipping."
+          fi

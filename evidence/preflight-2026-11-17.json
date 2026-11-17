@@ -1,0 +1,37 @@
+{
+  "note": "Read-only public endpoint checks run during setup. No keys used.",
+  "timestampUtc": "2026-11-17T23:45:00Z",
+  "arc": {
+    "rpc": "https://rpc.testnet.arc.io",
+    "eth_chainId": "0x4cef52",
+    "chainIdDecimal": 5042002,
+    "usdc": "0x3600000000000000000000000000000000000000",
+    "usdcDecimals": 6,
+    "source": "ONCHAIN_TESTNET"
+  },
+  "deribitTestnet": {
+    "btcUsdIndex": 64880.15,
+    "btcOptionExpiries": ["18NOV26", "19NOV26", "20NOV26", "21NOV26", "27NOV26", "4DEC26", "25DEC26", "29JAN27", "26MAR27", "25JUN27", "24SEP27"],
+    "has11DEC26": false,
+    "perpetuals": ["BTC-PERPETUAL", "BTC_USDC-PERPETUAL"],
+    "source": "TESTNET"
+  },
+  "geminiSandbox": {
+    "eventCount": 102,
+    "categories": ["Commodities", "Crypto"],
+    "hasBTC2611302200": true,
+    "fedEvents": [],
+    "source": "SANDBOX"
+  },
+  "geminiMainnet": {
+    "event": "FED261211",
+    "expiryUtc": "2026-12-11T05:00:00.000Z",
+    "fomcMeeting": "2026-12-08/09",
+    "quotes": {
+      "GEMI-FED261211-HIKEGT25": { "bid": "0.02", "ask": "0.07" },
+      "GEMI-FED261211-HIKE25": { "bid": "0.88", "ask": "0.93" },
+      "GEMI-FED261211-MAINTAIN": { "bid": "0.05", "ask": "0.07" }
+    },
+    "source": "LIVE_MAINNET_READONLY"
+  }
+}
