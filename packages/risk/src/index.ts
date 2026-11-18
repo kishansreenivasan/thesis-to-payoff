@@ -1,14 +1,13 @@
 // @ttp/risk, owned by Lane A. See docs/agents/lane-a.md.
 //
-// TODO(Lane A):
-//   1. Create src/mock.ts:  export const mock = { ... } satisfies RiskApi;
-//   2. Create src/real.ts:  export const real = { ... } satisfies RiskApi;
-//   3. Replace the placeholder below with:
-//        export const risk: RiskApi = MODE === "real" ? real : mock;
-//
 // Import only from @ttp/shared. Never import another lane's package.
 import type { RiskApi } from "@ttp/shared";
+import { mock } from "./mock";
+import { real } from "./real";
 
 export type { RiskApi };
+export { evaluateRisk } from "./evaluateRisk";
+export { mock, real };
 
 export const MODE: "mock" | "real" = process.env.RISK_MODE === "real" ? "real" : "mock";
+export const risk: RiskApi = MODE === "real" ? real : mock;
