@@ -122,3 +122,12 @@ Format:
 - **Lane C action:** none required for `demo:reset` (it needs no onchain hook). Optionally run `precheck` at the end of `demo:reset` and show its output. Keep `strategyId` stable across rehearsals; do not add a run id.
 - **Risk to know (humans / Lane C):** `strategyId = strat_<hash of the whole ThesisIntent>`, and the intent includes `rawText` and `horizonUtc`. If Grok words the thesis differently between rehearsals, the id changes, its cap is 0, and the 20 USDC allowed release (demo step 4) reverts with `ExceedsStrategyCap`. Run `precheck` with the id the compile response actually returns; the owner provisions it with the printed `setStrategyCap` command.
 - **Funding gap found by the first live run (2026-11-18):** the vault holds 22 USDC. The demo needs up to 100 USDC above the 10 USDC floor (20 allowed + an approved request). Human: send about 150 test USDC to the vault (keep gas on the sending wallet, see the gas/USDC note above).
+
+## [Lane A -> Lane C] Owner approval page: chain, ABI and approveRequest builder (APPLIED in Lane A; Lane C action needed)
+- When: 2026-11-18
+- What: browser-safe exports for `/approve/:requestId`, from `@ttp/treasury/owner` (also re-exported from `@ttp/treasury`; prefer the `/owner` subpath in `apps/web` so the server-side mock/real modules stay out of the browser bundle):
+  - `arcTestnet`: viem `defineChain` (id 5042002, RPC https://rpc.testnet.arc.io, explorer https://explorer.testnet.arc.io, native currency USDC with 18 decimals).
+  - `vaultAbi`, `ARC_TESTNET_VAULT_ADDRESS`, `arcTxUrl(hash)`, `arcAddressUrl(addr)`.
+  - `buildApproveRequestCall(requestId, vaultAddress?)`: validates the bytes32 id, returns `{ chainId, abi, address, functionName: "approveRequest", args, to, data }`. wagmi: `writeContract({ abi: c.abi, address: c.address, functionName: c.functionName, args: c.args, chainId: c.chainId })`, or `sendTransaction({ to: c.to, data: c.data })`.
+- **Lane C action:** wagmi config `chains: [arcTestnet]`; the page passes the request id from `GET /api/treasury/requests/:id` (it is the onchain bytes32 id). Next.js needs `transpilePackages: ["@ttp/treasury"]` because the package ships TypeScript source. Decline stays offchain (agent cancels onchain with its own key); nothing here approves on the owner's behalf.
+- Safety: the module has no env access and no key handling. The contract rejects any sender without OWNER_ROLE, so a wrong wallet's tx reverts.
