@@ -22,3 +22,19 @@ Format:
   - Gemini FED261211 terms say the FOMC meeting is **Dec 8 to 9, 2026**; the contract expires Dec 11 05:00 UTC. Copy that says "Fed on Dec 11" should say "Fed decision (Dec 9), market settles Dec 11".
   - Arc testnet RPC returns chain id 0x4cef52 (5042002); USDC at 0x3600...0000 reports 6 decimals. Matches Section 7.
 - Why: avoid surprises during adapter work and in pitch copy.
+
+## [Lane B] Quote and order conventions for venues (NOTED)
+- When: 2026-11-18 00:10 UTC
+- What:
+  - Deribit option quotes: bid/ask are USD per 1 BTC of option, converted from BTC with the book's index price.
+  - Deribit perp quotes: USD per 1 BTC.
+  - Gemini quotes: the YES book in USD per contract (0..1). Buying NO costs 1 - YES bid.
+  - `feeEstimateUsd`: estimated fee for one unit of quantity (1 BTC on Deribit, 1 contract on Gemini).
+  - L2 uses `BTC_USDC-PERPETUAL` (linear, USDC-settled, min size 0.0001 BTC). `BTC-PERPETUAL` is the fallback if the linear perp has no quote.
+  - Gemini orders: until OrderRequest has an outcome field, the instrumentId carries a suffix, `<symbol>:YES` or `<symbol>:NO`. Use `geminiOrderInstrument()` from `@ttp/venues`.
+- Why: Quote and OrderRequest have no unit or outcome fields; Lane C needs one convention to build orders and display prices.
+
+## [Lane B] Add optional `outcome` to OrderRequest (PROPOSED)
+- When: 2026-11-18 00:10 UTC
+- What: `outcome: z.enum(["YES", "NO"]).optional()` on `OrderRequest` in packages/shared. Gemini event orders need it; Deribit ignores it.
+- Why: replaces the `:YES` / `:NO` instrumentId suffix above. Optional field, so nothing breaks.

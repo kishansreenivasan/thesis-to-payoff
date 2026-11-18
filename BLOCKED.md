@@ -16,6 +16,32 @@ Append new entries at the top. Format: DESIGN.md Section 14. Humans fill in "Dec
 
 ---
 
+## [Lane B] L1 budget too small for Deribit's 0.1 BTC option minimum (OPEN)
+- When: 2026-11-18 00:10 UTC
+- Task: buildPlan against live Deribit testnet quotes (task 5)
+- Expected: DESIGN.md Section 8: L1 call premium + fees <= $230, strike nearest at-the-money
+- Actual: Deribit's minimum option size is 0.1 BTC. Live testnet ask for BTC-25DEC26-65000-C is about $3,468 per BTC, so 0.1 BTC costs $348.76 with fees. buildPlan stops with L1_BUDGET_BELOW_MIN_SIZE. An 11DEC26 ATM call would likely be about $2,200 to $2,700 per BTC, which is still at or above budget.
+- Evidence: rerun `buildPlan` on live quotes; error text above. Instrument spec: public/get_instrument min_trade_amount 0.1.
+- Options I see:
+  1. Raise the L1 budget to about $360 and shrink the perp stop to keep max loss <= $500 (for example L1 $360, stop $40). Changes the demo's risk story.
+  2. Pick the nearest strike whose 0.1 BTC cost fits $230 (an out-of-the-money call, roughly 70000 to 72000). Keeps the budget table; L1 is no longer at-the-money.
+  3. Raise max risk for the demo thesis (for example $650). Changes the fixed demo text.
+- Meanwhile: mocks use an 11DEC26 ATM price that fits ($2,180 per BTC), so `pnpm demo:mock` works. Real mode will refuse to build a plan until this is decided.
+- Decision (filled by humans):
+
+## [Lane B] No BTC2611302200 strike at or below the BTC index in Gemini sandbox (OPEN)
+- When: 2026-11-18 00:10 UTC
+- Task: L3b selection against live sandbox data (task 5)
+- Expected: DESIGN.md Section 6.1: "or above" contract with the highest strike at or below the current BTC index
+- Actual: sandbox BTC2611302200 strikes are 67,500 to 85,000. BTC index is about 64,826. No strike qualifies, so buildPlan stops with NO_L3B_STRIKE. The book is also thin: HI67500 has one YES bid (0.32 x 1 contract) and no asks.
+- Evidence: GET https://api.sandbox.gemini.com/v1/prediction-markets/events/BTC2611302200 and /v1/book/GEMI-BTC2611302200-HI67500
+- Options I see:
+  1. Use the lowest listed strike above the index (HI67500). NO pays if BTC finishes below $67,500, so it still hedges the downside, but costs about $0.68 per contract (about 58 contracts for $40) and there is only 1 contract of liquidity.
+  2. Use another sandbox BTC event whose strikes bracket the index, if one exists. Recheck daily.
+  3. Ask Gemini (human item 10) whether sandbox strikes can be relisted around the current price.
+- Meanwhile: mock data includes a 62,500 strike, so `pnpm demo:mock` works.
+- Decision (filled by humans):
+
 ## [Lane B] No 11 Dec 2026 BTC option expiry on Deribit testnet (RESOLVED)
 - When: 2026-11-17 23:45 UTC
 - Task: preflight check for L1 (setup, before any lane started)
