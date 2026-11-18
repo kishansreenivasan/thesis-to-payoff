@@ -1,0 +1,27 @@
+{
+  "network": "arc-testnet",
+  "chainId": 5042002,
+  "rpcUrl": "https://rpc.testnet.arc.io",
+  "contract": "ThesisTreasuryVault",
+  "address": "0x1e9B755C7caA3d1D007d70A7cF77E93cc6A65E07",
+  "deployTxHash": "0xffce9764a01e80f1153b3c87ff0710aa9918e74044528d9749a4cae76f1009d9",
+  "deployedAtUtc": "2026-11-18T01:44:04Z",
+  "deployerAgentAddress": "0x419792c79bC487e0fB4457080413A8973ACdc485",
+  "constructorArgs": {
+    "usdc": "0x3600000000000000000000000000000000000000",
+    "owner": "0x7Da8b9753c9D9793fEB86047888463F47Ac85A01",
+    "agent": "0x419792c79bC487e0fB4457080413A8973ACdc485",
+    "guardian": "0x18EF3a57176224851b24a600Ed73259379433C38",
+    "perTxCap6": "25000000",
+    "dailyCap6": "50000000",
+    "reserveFloor6": "10000000"
+  },
+  "settlementAddress": "0x47D9A12bBC0c9EA77D2f9202b256e01A4eF9e618",
+  "explorerUrl": "https://explorer.testnet.arc.io/address/0x1e9B755C7caA3d1D007d70A7cF77E93cc6A65E07",
+  "notes": [
+    "Guardian and settlement addresses were freshly generated (cast wallet new) since the human setup checklist did not provide them; guardian is pause-only and settlement is just an allowlisted destination, so this carries no extra risk.",
+    "Owner holds OWNER_ROLE and must still call setDestination(settlement, true) and setStrategyCap(strategyId, cap6) from their own wallet before any release can succeed (both are onlyRole(OWNER_ROLE); the owner key is never held by the agent or server, DESIGN.md Section 13 item 5).",
+    "Vault funded with 13 USDC so far (reserve floor 10 + 3 releasable) from the agent's testnet allocation; demo defaults call for about 150 USDC total, so more should be fauceted before the full rescue sequence (an 80 USDC approval request) can be demonstrated.",
+    "Arc testnet USDC at 0x3600...0000 mirrors the account's native gas balance at 6-decimal precision rather than being an independent ERC20 ledger: moving 'USDC' in or out of an address also moves its native gas balance. Keep a gas buffer on the agent address when funding the vault."
+  ]
+}
