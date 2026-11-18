@@ -65,6 +65,14 @@ describe("Gemini adapter", () => {
     expect(c.payload).toMatchObject({ request: "/v1/prediction-markets/order", symbol: "GEMI-BTC2611302200-HI67500", outcome: "no", side: "buy", price: "0.68", quantity: "1", orderType: "limit" });
   });
 
+  it("master keys name the account on every request; account keys do not", async () => {
+    const { fetchFn, calls } = fakeGemini({ "/v1/prediction-markets/positions": () => ({ positions: [] }) });
+    await createGeminiAdapter({ fetchFn, env: { ...env, GEMINI_SANDBOX_KEY: "master-abc" } as NodeJS.ProcessEnv }).getPositions();
+    await createGeminiAdapter({ fetchFn, env }).getPositions();
+    expect(calls[0]!.payload.account).toBe("primary");
+    expect(calls[1]!.payload.account).toBeUndefined();
+  });
+
   it("nonces strictly increase within a second", async () => {
     const { fetchFn, calls } = fakeGemini({ ...terms, "/v1/prediction-markets/positions": () => ({ positions: [] }) });
     const g = createGeminiAdapter({ fetchFn, env, nowSec: () => 1_794_960_000 });
@@ -97,6 +105,28 @@ describe("Gemini adapter", () => {
     expect(await g.getOrder("never-sent")).toBeNull();
   });
 
+  it("keeps 18-digit Gemini order ids exact, and cancels by the exact id", async () => {
+    const exact = "145853902322404723"; // Number() would round this to ...740
+    let cancelled = false;
+    const raw = (status: string) => `{"orderId":${exact},"status":"${status}","symbol":"GEMI-BTC2611302200-HI67500","side":"buy","outcome":"no","quantity":"1","filledQuantity":"0","price":"0.01","avgExecutionPrice":null}`;
+    const fetchFn = (async (url: string, init?: RequestInit) => {
+      const path = new URL(url).pathname;
+      const payload = JSON.parse(Buffer.from((init!.headers as Record<string, string>)["X-GEMINI-PAYLOAD"]!, "base64").toString());
+      if (path.endsWith("/terms/status")) return new Response('{"hasAcceptedLatest":true}');
+      if (path.endsWith("/order")) return new Response(raw("open"));
+      if (path.endsWith("/order/cancel")) {
+        expect(payload.orderId).toBe(exact);
+        cancelled = true;
+        return new Response('{"result":"ok"}');
+      }
+      if (path.endsWith("/orders/active")) return new Response(`{"orders":[${cancelled ? "" : raw("open")}]}`);
+      return new Response(`{"orders":[${cancelled ? raw("cancelled") : ""}]}`);
+    }) as unknown as typeof fetch;
+    const g = createGeminiAdapter({ fetchFn, env });
+    expect((await g.placeOrder(noReq)).venueOrderId).toBe(exact);
+    expect((await g.cancelOrder("g1")).state).toBe("CANCELED");
+  });
+
   it("cancels an open order by orderId", async () => {
     let cancelled = false;
     const { fetchFn, calls } = fakeGemini({
@@ -109,7 +139,7 @@ describe("Gemini adapter", () => {
     const g = createGeminiAdapter({ fetchFn, env });
     await g.placeOrder(noReq);
     expect((await g.cancelOrder("g1")).state).toBe("CANCELED");
-    expect(calls.find((c) => c.path.endsWith("/order/cancel"))!.payload.orderId).toBe(12345678901);
+    expect(calls.find((c) => c.path.endsWith("/order/cancel"))!.payload.orderId).toBe("12345678901");
   });
 
   it("sends one order at a time", async () => {

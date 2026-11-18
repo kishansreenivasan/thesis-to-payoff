@@ -293,16 +293,54 @@ export function createDeriveAdapter(opts: DeriveAdapterOptions = {}) {
   }
   const priv = async <T>(method: string, params: unknown) => post<T>(fetchFn, base, method, params, await authHeaders());
 
-  /** clientOrderId -> what we sent and the nonce we signed. Same nonce on retry, so the venue rejects duplicates. */
-  const sent = new Map<string, { req: OrderRequest; account: DeriveAccount; nonce: bigint; orderId?: string }>();
+  /**
+   * clientOrderId -> what we sent, the nonce we signed (same nonce on retry, so the venue rejects
+   * duplicates), and `last`: the most recent state Derive itself returned for the order.
+   */
+  const sent = new Map<string, { req: OrderRequest; account: DeriveAccount; nonce: bigint; orderId?: string; last?: DeriveOrder }>();
+  const remember = (clientOrderId: string, o: DeriveOrder) => {
+    const e = sent.get(clientOrderId);
+    if (e) sent.set(clientOrderId, { ...e, orderId: o.order_id, last: o });
+  };
 
   async function findOpenByLabel(account: DeriveAccount, label: string): Promise<DeriveOrder | null> {
     const r = await priv<{ orders: DeriveOrder[] }>("private/get_open_orders", { subaccount_id: Number(getCreds().subaccounts[account]) });
     return r.orders.find((o) => o.label === label) ?? null;
   }
 
-  async function getById(account: DeriveAccount, orderId: string): Promise<DeriveOrder> {
-    return priv<DeriveOrder>("private/get_order", { order_id: orderId, subaccount_id: Number(getCreds().subaccounts[account]) });
+  /** Search order history (open, filled and cancelled orders) for a match. */
+  async function findInHistory(account: DeriveAccount, match: (o: DeriveOrder) => boolean): Promise<DeriveOrder | null> {
+    const subaccount_id = Number(getCreds().subaccounts[account]);
+    for (let page = 1; page <= 5; page++) {
+      const r = await priv<{ orders: DeriveOrder[] }>("private/get_order_history", { subaccount_id, page_size: 100, page });
+      const hit = (r.orders ?? []).find(match);
+      if (hit) return hit;
+      if ((r.orders ?? []).length < 100) break;
+    }
+    return null;
+  }
+
+  /**
+   * Read one order. Derive testnet's read side lags writes by a variable amount (2026-11-18:
+   * `get_order` said 11006 "Does not exist" for 1 to 25+ s after an order was placed or cancelled).
+   * On 11006 we look in open orders and the history for up to `waitSec`, then fall back to the
+   * last state Derive itself returned for this order (`fallback`), if we have one.
+   */
+  async function getById(account: DeriveAccount, orderId: string, fallback?: DeriveOrder, waitSec = 5): Promise<DeriveOrder> {
+    try {
+      return await priv<DeriveOrder>("private/get_order", { order_id: orderId, subaccount_id: Number(getCreds().subaccounts[account]) });
+    } catch (e) {
+      if (!(e instanceof DeriveError && e.code === 11006)) throw e;
+      const subaccount_id = Number(getCreds().subaccounts[account]);
+      for (let attempt = 0; attempt <= waitSec; attempt++) {
+        if (attempt > 0) await sleep(1_000);
+        const open = await priv<{ orders: DeriveOrder[] }>("private/get_open_orders", { subaccount_id });
+        const hit = open.orders.find((o) => o.order_id === orderId) ?? (await findInHistory(account, (o) => o.order_id === orderId));
+        if (hit) return hit;
+      }
+      if (fallback) return fallback;
+      throw e;
+    }
   }
 
   async function placeOrder(req: OrderRequest): Promise<Order> {
@@ -313,63 +351,83 @@ export function createDeriveAdapter(opts: DeriveAdapterOptions = {}) {
     const subaccountId = c.subaccounts[account];
 
     const known = sent.get(req.clientOrderId);
-    if (known?.orderId) return toDeriveOrder(await getById(account, known.orderId), req);
-    const open = await findOpenByLabel(account, req.clientOrderId);
+    if (known?.orderId) return toDeriveOrder(await getById(account, known.orderId, known.last), req);
+    // Never resend: an order with this label already exists (open, or in the history after a restart).
+    const open = (await findOpenByLabel(account, req.clientOrderId)) ?? (await findInHistory(account, (o) => o.label === req.clientOrderId));
     if (open) {
       sent.set(req.clientOrderId, { req, account, nonce: BigInt(open.nonce ?? 0), orderId: open.order_id });
       return toDeriveOrder(open, req);
     }
 
     const inst = await pub.instrument(req.instrumentId);
-    const nonce = known?.nonce ?? makeNonce(now());
-    const expirySec = BigInt(Math.floor(now() / 1000) + 600);
-    // max_fee is per unit of volume in USDC; allow 2x the taker fee at this price, plus the base fee.
-    const maxFee = new Decimal(req.limitPrice).mul(inst.taker_fee_rate).mul(2).add(inst.base_fee).toDecimalPlaces(2, Decimal.ROUND_UP);
-    const digest = tradeActionDigest({
-      subaccountId,
-      nonce,
-      expiry: expirySec,
-      owner: c.wallet,
-      signer: c.signer.address,
-      asset: inst.base_asset_address,
-      subId: BigInt(inst.base_asset_sub_id),
-      limitPrice: req.limitPrice,
-      amount: req.quantity,
-      maxFee,
-      isBid: req.side === "BUY",
-    });
-    const signature = await c.signer.sign({ hash: digest });
-    sent.set(req.clientOrderId, { req, account, nonce });
+    // max_fee is a cap per unit of volume in USDC, and Derive checks it against fees on the INDEX
+    // price, not our limit price (2026-11-18: a $5 option bid was refused below 37.37). Cap at 3x the
+    // taker fee on the index plus the base fee; if Derive still asks for more, re-sign once at its
+    // stated minimum (plus 10%). A rejected order was never placed, so re-signing is safe.
+    const index = await pub.index();
+    let maxFee = index.mul(inst.taker_fee_rate).mul(3).add(inst.base_fee).toDecimalPlaces(2, Decimal.ROUND_UP);
 
-    // Reduce-only works only for non-resting orders on Derive, so those go IOC.
-    const placed = await priv<{ order: DeriveOrder }>("private/order", {
-      subaccount_id: Number(subaccountId),
-      instrument_name: req.instrumentId,
-      direction: req.side === "BUY" ? "buy" : "sell",
-      order_type: "limit",
-      time_in_force: req.reduceOnly ? "ioc" : "gtc",
-      reduce_only: req.reduceOnly,
-      amount: req.quantity,
-      limit_price: req.limitPrice,
-      max_fee: maxFee.toString(),
-      label: req.clientOrderId,
-      nonce: nonce.toString(),
-      signer: c.signer.address,
-      signature,
-      signature_expiry_sec: Number(expirySec),
-    });
+    const submit = async (fee: Decimal, nonce: bigint) => {
+      const expirySec = BigInt(Math.floor(now() / 1000) + 600);
+      const digest = tradeActionDigest({
+        subaccountId,
+        nonce,
+        expiry: expirySec,
+        owner: c.wallet,
+        signer: c.signer.address,
+        asset: inst.base_asset_address,
+        subId: BigInt(inst.base_asset_sub_id),
+        limitPrice: req.limitPrice,
+        amount: req.quantity,
+        maxFee: fee,
+        isBid: req.side === "BUY",
+      });
+      const signature = await c.signer.sign({ hash: digest });
+      sent.set(req.clientOrderId, { req, account, nonce });
+      // Reduce-only works only for non-resting orders on Derive, so those go IOC.
+      return priv<{ order: DeriveOrder }>("private/order", {
+        subaccount_id: Number(subaccountId),
+        instrument_name: req.instrumentId,
+        direction: req.side === "BUY" ? "buy" : "sell",
+        order_type: "limit",
+        time_in_force: req.reduceOnly ? "ioc" : "gtc",
+        reduce_only: req.reduceOnly,
+        amount: req.quantity,
+        limit_price: req.limitPrice,
+        max_fee: fee.toString(),
+        label: req.clientOrderId,
+        nonce: nonce.toString(),
+        signer: c.signer.address,
+        signature,
+        signature_expiry_sec: Number(expirySec),
+      });
+    };
+
+    let placed: { order: DeriveOrder };
+    try {
+      placed = await submit(maxFee, known?.nonce ?? makeNonce(now()));
+    } catch (e) {
+      const need = e instanceof DeriveError && e.code === 11023 ? /max_fee must be >=\s*([\d.]+)/.exec(e.message)?.[1] : undefined;
+      if (!need) throw e;
+      maxFee = new Decimal(need).mul("1.1").toDecimalPlaces(2, Decimal.ROUND_UP);
+      placed = await submit(maxFee, makeNonce(now()));
+    }
     let o = placed.order;
-    sent.set(req.clientOrderId, { req, account, nonce, orderId: o.order_id });
+    remember(req.clientOrderId, o);
 
     // Thin testnet books: wait for the fill, then cancel and report REJECTED (NO_FILL), as on Deribit.
+    // While polling, a lagging read just keeps the last state we saw (no waiting).
     const deadline = now() + fillTimeoutMs;
     while (o.order_status === "open" && now() < deadline) {
       await sleep(pollMs);
-      o = await getById(account, o.order_id);
+      o = await getById(account, o.order_id, o, 0);
+      remember(req.clientOrderId, o);
     }
     if (o.order_status === "open") {
-      await priv("private/cancel", { instrument_name: req.instrumentId, order_id: o.order_id, subaccount_id: Number(subaccountId) });
-      o = await getById(account, o.order_id);
+      // Derive's cancel reply carries the cancelled order; read it back only if it doesn't.
+      const c2 = await priv<Partial<DeriveOrder>>("private/cancel", { instrument_name: req.instrumentId, order_id: o.order_id, subaccount_id: Number(subaccountId) });
+      o = c2?.order_id === o.order_id && c2.order_status ? (c2 as DeriveOrder) : await getById(account, o.order_id);
+      remember(req.clientOrderId, o);
       const out = toDeriveOrder(o, req);
       return new Decimal(out.filledQuantity).isZero() ? { ...out, state: "REJECTED" } : out;
     }
@@ -378,10 +436,14 @@ export function createDeriveAdapter(opts: DeriveAdapterOptions = {}) {
 
   async function getOrder(clientOrderId: string): Promise<Order | null> {
     const known = sent.get(clientOrderId);
-    if (known?.orderId) return toDeriveOrder(await getById(known.account, known.orderId), known.req);
-    // Unknown here (e.g. after a restart): only open orders can be found by label.
+    if (known?.orderId) {
+      const o = await getById(known.account, known.orderId, known.last);
+      remember(clientOrderId, o);
+      return toDeriveOrder(o, known.req);
+    }
+    // Unknown here (e.g. after a restart): find it by label among open orders, then in the history.
     for (const account of ["main", "perp"] as const) {
-      const o = await findOpenByLabel(account, clientOrderId);
+      const o = (await findOpenByLabel(account, clientOrderId)) ?? (await findInHistory(account, (x) => x.label === clientOrderId));
       if (o) {
         const req: OrderRequest = {
           clientOrderId,
@@ -406,12 +468,14 @@ export function createDeriveAdapter(opts: DeriveAdapterOptions = {}) {
     if (!current?.venueOrderId) throw new Error(`Derive: no order with clientOrderId ${clientOrderId}`);
     if (["FILLED", "CANCELED", "REJECTED"].includes(current.state)) return current;
     const account = current.account as DeriveAccount;
-    await priv("private/cancel", {
+    const cancelled = await priv<Partial<DeriveOrder>>("private/cancel", {
       instrument_name: current.instrumentId,
       order_id: current.venueOrderId,
       subaccount_id: Number(getCreds().subaccounts[account]),
     });
-    return toDeriveOrder(await getById(account, current.venueOrderId), current);
+    const o = cancelled?.order_id === current.venueOrderId && cancelled.order_status ? (cancelled as DeriveOrder) : await getById(account, current.venueOrderId);
+    remember(clientOrderId, o);
+    return toDeriveOrder(o, current);
   }
 
   async function subaccount(account: DeriveAccount): Promise<DeriveSubaccount> {

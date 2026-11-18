@@ -137,3 +137,23 @@ Format:
 - What: found by the new integration test. With an `ARC_FINALIZED` / `VENUE_CREDIT_SIMULATED` / `OWNER_APPROVED` / `SUBMITTED` request on record and the projected ratio still in [1.2, 1.5), `evaluateRisk` used to fall through to `RELEASE_WITHIN_LIMITS` / `REQUEST_APPROVAL` again. Simulated credit never changes real margin, so that would have looped requests until the caps ran out. It now returns `REDUCE_PERP` with `reasonCode: "FundingDidNotImproveMargin"` (DESIGN.md Section 8 step 7). No schema change; `reasonCode` is a free string.
 - Lane C: no action. The approve path (owner approves, then the next shock tick) now ends in a reduce-only order instead of a second request.
 - Tests: `tests/integration/arc-rescue.test.ts` (mock mode in CI; a `TREASURY_LIVE=1` variant runs a real revert, a real request and an agent cancel, moving no funds, then a reduce-only order on the mock venue until Derive is funded).
+
+## [Lane B] Live smoke tests pass on Derive testnet and Gemini sandbox (NOTED)
+- When: 2026-11-18
+- Evidence: `evidence/derive-smoke.json` (9/9) and `evidence/gemini-smoke.json` (8/8). Both are redacted, and every test order was cancelled.
+- Accounts: Derive wallet `0x3B6e...58d8`.
+  - Main subaccount `88265`: 300 USDC.
+  - Perp subaccount `88268`: 230 USDC.
+  - `88264` is the empty fallback subaccount Derive creates on a wallet's first deposit.
+- **Confirmed live:**
+  - Derive margins are **net**. With no positions, `maintenance_margin` = `subaccount_value` = 300.
+  - The EOA owns the account, so `owner == signer` works with no session key.
+  - Gemini signing goes in the `X-GEMINI-PAYLOAD` header with an empty body.
+  - The prediction-market terms are accepted on the sandbox account.
+- **Fixed from the live runs:**
+  - Derive `max_fee` is checked against fees on the **index** price, not the limit price (a $5 bid needed >= 37.37). The adapter now caps at 3x the taker fee on the index plus the base fee, and re-signs once at Derive's stated minimum if refused.
+  - Derive testnet reads lag writes: `private/get_order` returns 11006 "Does not exist" for 1 to 25+ s after a place or cancel. The adapter now uses the cancel reply, falls back to open orders and `private/get_order_history`, and otherwise returns the last state Derive reported.
+  - Gemini **master** API keys must send `"account": "primary"` on every request (400 MissingAccounts otherwise). It's set by `GEMINI_ACCOUNT`, default primary.
+  - Gemini order ids exceed 2^53 and were silently rounded by `JSON.parse` (...723 became ...740, so the cancel said "not found"). Responses are now parsed losslessly, and cancels send the id as a string.
+  - Derive's documented `depositToNewSubaccount` is not in the deployed ActionManager implementation. Funding uses `public/register_deposit_address` (manager 1, standard margin) plus a plain USDC transfer: `pnpm --filter @ttp/venues derive:fund <amount> [--yes]`.
+- Still unconfirmed: the Gemini prediction-market fee schedule (quotes still use `feeEstimateUsd: "0"`).

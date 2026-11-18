@@ -10,7 +10,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "smoke": "tsx --env-file-if-exists=../../.env smoke/smoke.ts"
+    "smoke": "tsx --env-file-if-exists=../../.env smoke/smoke.ts",
+    "derive:fund": "tsx --env-file-if-exists=../../.env smoke/derive-fund.ts"
   },
   "dependencies": {
     "@ttp/shared": "workspace:*",

@@ -1,0 +1,214 @@
+{
+  "ranAtUtc": "2026-11-18T23:11:18.839Z",
+  "steps": [
+    {
+      "step": "list sandbox BTC2611302200",
+      "ok": true,
+      "result": [
+        {
+          "eventTicker": "BTC2611302200",
+          "title": "BTC price on November 30",
+          "expiryUtc": "2026-11-30T22:00:00.000Z",
+          "contracts": [
+            {
+              "instrumentSymbol": "GEMI-BTC2611302200-HI67500",
+              "label": "$67,500 or above",
+              "bestBid": "0.32",
+              "bestAsk": null
+            },
+            {
+              "instrumentSymbol": "GEMI-BTC2611302200-HI70000",
+              "label": "$70,000 or above",
+              "bestBid": null,
+              "bestAsk": null
+            },
+            {
+              "instrumentSymbol": "GEMI-BTC2611302200-HI72500",
+              "label": "$72,500 or above",
+              "bestBid": null,
+              "bestAsk": null
+            },
+            {
+              "instrumentSymbol": "GEMI-BTC2611302200-HI75000",
+              "label": "$75,000 or above",
+              "bestBid": null,
+              "bestAsk": null
+            },
+            {
+              "instrumentSymbol": "GEMI-BTC2611302200-HI77500",
+              "label": "$77,500 or above",
+              "bestBid": null,
+              "bestAsk": null
+            },
+            {
+              "instrumentSymbol": "GEMI-BTC2611302200-HI80000",
+              "label": "$80,000 or above",
+              "bestBid": null,
+              "bestAsk": null
+            },
+            {
+              "instrumentSymbol": "GEMI-BTC2611302200-HI82500",
+              "label": "$82,500 or above",
+              "bestBid": null,
+              "bestAsk": null
+            },
+            {
+              "instrumentSymbol": "GEMI-BTC2611302200-HI85000",
+              "label": "$85,000 or above",
+              "bestBid": null,
+              "bestAsk": null
+            }
+          ],
+          "termsUrl": "https://assets.gemini.com/predictions/terms_and_conditions/btc_398860b3-ea2f-47a7-b167-a8c6ad03d6d7.pdf",
+          "source": "SANDBOX"
+        }
+      ]
+    },
+    {
+      "step": "quote GEMI-BTC2611302200-HI67500",
+      "ok": true,
+      "result": {
+        "venue": "GEMINI",
+        "instrumentId": "GEMI-BTC2611302200-HI67500",
+        "bid": "0.32",
+        "ask": null,
+        "bidSize": "45.0",
+        "askSize": null,
+        "feeEstimateUsd": "0",
+        "timestamp": "2026-11-18T23:11:11.204Z",
+        "source": "SANDBOX"
+      }
+    },
+    {
+      "step": "place 1-contract limit buy NO @ 0.01",
+      "ok": true,
+      "result": {
+        "clientOrderId": "smoke-g-1795043471205",
+        "strategyId": "smoke",
+        "legId": "L3b",
+        "venue": "GEMINI",
+        "account": "sandbox",
+        "instrumentId": "GEMI-BTC2611302200-HI67500:NO",
+        "side": "BUY",
+        "quantity": "1",
+        "limitPrice": "0.01",
+        "reduceOnly": false,
+        "venueOrderId": "145853902322407081",
+        "filledQuantity": "0",
+        "avgPrice": null,
+        "state": "ACKNOWLEDGED",
+        "source": "SANDBOX",
+        "updatedAt": "2026-11-18T23:11:11.434Z"
+      }
+    },
+    {
+      "step": "order status",
+      "ok": true,
+      "result": {
+        "clientOrderId": "smoke-g-1795043471205",
+        "strategyId": "smoke",
+        "legId": "L3b",
+        "venue": "GEMINI",
+        "account": "sandbox",
+        "instrumentId": "GEMI-BTC2611302200-HI67500:NO",
+        "side": "BUY",
+        "quantity": "1",
+        "limitPrice": "0.01",
+        "reduceOnly": false,
+        "venueOrderId": "145853902322407081",
+        "filledQuantity": "0",
+        "avgPrice": null,
+        "state": "ACKNOWLEDGED",
+        "source": "SANDBOX",
+        "updatedAt": "2026-11-18T23:11:11.431Z"
+      }
+    },
+    {
+      "step": "cancel",
+      "ok": true,
+      "result": {
+        "clientOrderId": "smoke-g-1795043471205",
+        "strategyId": "smoke",
+        "legId": "L3b",
+        "venue": "GEMINI",
+        "account": "sandbox",
+        "instrumentId": "GEMI-BTC2611302200-HI67500:NO",
+        "side": "BUY",
+        "quantity": "1",
+        "limitPrice": "0.01",
+        "reduceOnly": false,
+        "venueOrderId": "145853902322407081",
+        "filledQuantity": "0",
+        "avgPrice": null,
+        "state": "CANCELED",
+        "source": "SANDBOX",
+        "updatedAt": "2026-11-18T23:11:11.646Z"
+      }
+    },
+    {
+      "step": "positions",
+      "ok": true,
+      "result": []
+    },
+    {
+      "step": "mainnet FED261211",
+      "ok": true,
+      "result": [
+        {
+          "eventTicker": "FED261211",
+          "title": "Fed decision in December?",
+          "expiryUtc": "2026-12-11T05:00:00.000Z",
+          "contracts": [
+            {
+              "instrumentSymbol": "GEMI-FED261211-HIKE25",
+              "label": "Hike 25bps",
+              "bestBid": "0.88",
+              "bestAsk": "0.93"
+            },
+            {
+              "instrumentSymbol": "GEMI-FED261211-HIKEGT25",
+              "label": "Hike >25bps",
+              "bestBid": "0.03",
+              "bestAsk": "0.08"
+            },
+            {
+              "instrumentSymbol": "GEMI-FED261211-MAINTAIN",
+              "label": "Fed maintains rate",
+              "bestBid": null,
+              "bestAsk": "0.05"
+            },
+            {
+              "instrumentSymbol": "GEMI-FED261211-CUTGT25",
+              "label": "Cut >25bps",
+              "bestBid": null,
+              "bestAsk": "0.03"
+            },
+            {
+              "instrumentSymbol": "GEMI-FED261211-CUT25",
+              "label": "Cut 25bps",
+              "bestBid": null,
+              "bestAsk": "0.02"
+            }
+          ],
+          "termsUrl": "https://assets.gemini.com/predictions/terms_and_conditions/Gemini_402_Product_Filing_-_FEDDEC_-_20251211_6927e3ff-608d-4f76-98c4-f16ad6402cc6.pdf",
+          "source": "LIVE_MAINNET_READONLY"
+        }
+      ]
+    },
+    {
+      "step": "mainnet quote HIKEGT25",
+      "ok": true,
+      "result": {
+        "venue": "GEMINI",
+        "instrumentId": "GEMI-FED261211-HIKEGT25",
+        "bid": "0.03",
+        "ask": "0.08",
+        "bidSize": "13333.0",
+        "askSize": "434.0",
+        "feeEstimateUsd": "0",
+        "timestamp": "2026-11-18T23:11:18.838Z",
+        "source": "LIVE_MAINNET_READONLY"
+      }
+    }
+  ]
+}
