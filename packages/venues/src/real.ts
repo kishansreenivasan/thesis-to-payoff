@@ -2,11 +2,16 @@
 // Done: public, keyless reads verified on 2026-11-17 against live endpoints
 //   - Deribit testnet: public/get_index_price, public/get_order_book
 //   - Gemini mainnet + sandbox: GET /v1/prediction-markets/events, /events/{ticker}, /v1/book/{symbol}
-// Not done: authenticated calls (orders, positions, margin). They need human setup items 1-3 and
-// must be verified against the docs before coding (DESIGN.md Section 6). They throw until then.
+// Authenticated calls (orders, positions, margin) live in deribit.ts and gemini.ts.
 import Decimal from "decimal.js";
 import type { GeminiEvent, Quote, Source, Venue, VenuesApi } from "@ttp/shared";
 import { DERIBIT_OPTION_FEE_BTC_PER_CONTRACT, DERIBIT_PERP_TAKER_FEE_RATE } from "./conventions";
+import { createDeribitAdapter } from "./deribit";
+import { createGeminiAdapter } from "./gemini";
+
+const unsupported = (venue: string): never => {
+  throw new Error(`venues.real: unsupported venue ${venue}`);
+};
 
 export const DERIBIT_TESTNET = "https://test.deribit.com/api/v2";
 export const GEMINI_HOSTS = { mainnet: "https://api.gemini.com", sandbox: "https://api.sandbox.gemini.com" } as const;
@@ -160,14 +165,12 @@ async function geminiQuote(symbol: string, env: "mainnet" | "sandbox"): Promise<
   };
 }
 
-// ---------- Authenticated calls: not implemented yet ----------
+// ---------- Authenticated calls ----------
+// Built from the docs on 2026-11-18 and unit-tested with recorded shapes. Not yet run with keys:
+// run `pnpm --filter @ttp/venues smoke` once human setup items 1-3 are done (DESIGN.md Section 6).
 
-function needsKeys(fn: string): never {
-  throw new Error(
-    `venues.real.${fn}: authenticated venue calls are not implemented yet. ` +
-      "They need Gemini sandbox / Deribit testnet keys (DESIGN.md Section 13, items 1-3). Use VENUES_MODE=mock until then.",
-  );
-}
+const deribit = createDeribitAdapter();
+const gemini = createGeminiAdapter();
 
 export const real = {
   discoverGeminiEvents: (env, search) => geminiEvents(env, search),
@@ -178,11 +181,12 @@ export const real = {
     throw new Error(`getQuote: unsupported venue ${venue}`);
   },
 
-  placeOrder: async () => needsKeys("placeOrder"),
-  getOrder: async () => needsKeys("getOrder"),
-  cancelOrder: async () => needsKeys("cancelOrder"),
-  getPositions: async () => needsKeys("getPositions"),
-  getMargin: async () => needsKeys("getMargin"),
+  placeOrder: (req) => (req.venue === "GEMINI" ? gemini.placeOrder(req) : req.venue === "DERIBIT" ? deribit.placeOrder(req) : unsupported(req.venue)),
+  getOrder: (venue, id) => (venue === "GEMINI" ? gemini.getOrder(id) : venue === "DERIBIT" ? deribit.getOrder(id) : unsupported(venue)),
+  cancelOrder: (venue, id) => (venue === "GEMINI" ? gemini.cancelOrder(id) : venue === "DERIBIT" ? deribit.cancelOrder(id) : unsupported(venue)),
+  getPositions: (venue, account) =>
+    venue === "GEMINI" ? gemini.getPositions() : venue === "DERIBIT" ? deribit.getPositions(account) : unsupported(venue),
+  getMargin: (account) => deribit.getMargin(account),
 
   async getIndexPrice() {
     return { priceUsd: (await deribitIndex()).toFixed(2), source: "TESTNET" as const, timestamp: new Date().toISOString() };

@@ -50,3 +50,14 @@ Format:
   zeroes its gas, leaving it unable to send further transactions. Keep a gas buffer when funding.
   `ThesisTreasuryVault` itself needs no change (it only ever reads `balanceOf`/`safeTransfer`), but
   anyone scripting Arc transfers should account for this before draining a balance to zero.
+
+## [Lane B] Authenticated venue adapters: built from docs, to confirm in smoke test (NOTED)
+- When: 2026-11-18 01:30 UTC
+- What: `packages/venues/src/deribit.ts` and `gemini.ts` follow docs.deribit.com and developer.gemini.com as read on 2026-11-18. Unit tests replay the documented response shapes. Not yet run with keys. Items the docs leave open, which `pnpm --filter @ttp/venues smoke` will settle:
+  - Deribit: `BTC_USDC-PERPETUAL` `amount`, `filled_amount` and position `size_currency` are in BTC (docs say "linear futures: base coin").
+  - Deribit: `advanced: "usd"` accepts option limit prices in USD.
+  - Deribit: `get_order_state_by_label` only sees orders closed in the last 30 minutes. `getOrder` for older orders returns null.
+  - Gemini: the auth page says payload goes Base64 in `X-GEMINI-PAYLOAD` with an empty body. The prediction-market pages show a JSON body. The adapter follows the auth page.
+  - Gemini: a NO order's `price` is the NO price (we send 0.68 when YES bids 0.32).
+  - Gemini: requests have no client order id and there is no lookup by order id. The adapter maps clientOrderId to orderId in memory and searches active orders, then history. After a process restart, `getOrder` returns null for older Gemini orders, so Lane C should persist `venueOrderId` with the clientOrderId.
+- Behavior: Deribit orders wait up to 30 s for a fill, then cancel. A fully unfilled order comes back `REJECTED` (reason NO_FILL); a partial fill comes back `CANCELED` with its `filledQuantity`. Gemini orders go out one at a time. The adapter refuses to trade if prediction terms are not accepted, and never accepts them itself.
