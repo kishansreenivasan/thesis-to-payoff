@@ -17,6 +17,30 @@ Spec: DESIGN.md Sections 4 (Lane C), 5, 8 (monitoring loop), 9, 10, 11, 16, 17. 
 - [ ] 7. README, demo script, video script, Devpost text, Grok chat export.
 - [ ] 8. Extra after Thu 2 PM: Telegram alerts.
 
+## Hand-offs from Lanes A and B (added 2026-11-18, in priority order)
+
+Lane B's venues pass live smoke tests on Derive testnet and the Gemini sandbox (`evidence/derive-smoke.json`, `evidence/gemini-smoke.json`). Lane A's phase 2 is done. Details are in the last entries of `CHANGES.md`.
+
+- [ ] C1. **Flip `VENUES_MODE=real` and `STRATEGY_MODE=real`.** `.env` has the Derive wallet, both subaccount IDs (main `88265`, perp `88268`) and the Gemini sandbox key. Before `buildPlan`, quote these:
+  - the L1 strikes from `listCalls(L1_EXPIRY_PREFERENCE)` (`@ttp/venues`, `@ttp/strategy`)
+  - `BTC-PERP`
+  - `GEMI-FED261211-HIKEGT25` on **mainnet**
+  - the `BTC2611302200` contracts on the **sandbox** (`discoverGeminiEvents("sandbox", "BTC2611302200")`)
+- [ ] C2. **Wire `compile_thesis` to Grok's fields.** In `packages/mcp`, set the tool's `inputSchema` to `COMPILE_THESIS_INPUT_SCHEMA` and call `intentFromGrok(args)`, both from `@ttp/strategy`. No LLM on the server.
+- [ ] C3. **Replace the `"DERIBIT"` literals in `apps/api/src/app.ts` with `"DERIVE"`.** The venues alias is temporary.
+- [ ] C4. **Persist `venueOrderId` with each `clientOrderId`.** Gemini has no client-id lookup, and Derive's read API lags writes. Use the stored id after a restart.
+- [ ] C5. **Owner approval page.** Use Lane A's browser-safe exports from `@ttp/treasury/owner`: `arcTestnet`, `vaultAbi`, `buildApproveRequestCall`.
+- [ ] C6. **README.** Paste `docs/agents/lane-a-readme-draft.md` (vault address, Arc tx links, Arc quirks). Add a venues section covering:
+  - Derive testnet for L1/L2 (replaced Deribit; see BLOCKED.md)
+  - Gemini sandbox for L3b, plus the live mainnet Fed quote for L3a
+  - links to both smoke evidence files
+- [ ] C7. **Price labels.** Derive's testnet BTC index (about 62,500) differs from Gemini's sandbox BTC price. Show each with its source badge.
+- [ ] C8. **Housekeeping.** Delete `apps/web/tsconfig.tsbuildinfo` and add `*.tsbuildinfo` to `.gitignore`. It changes on every typecheck and causes merge conflicts.
+- [ ] C9. **Deploy.** Put API + MCP + web at `PUBLIC_BASE_URL` with `MCP_BEARER_TOKEN` once the humans create the host. Then tell them to add the connector in Grok.
+- [ ] C10. **Rehearsal checks** (before each run-through):
+  - `pnpm --filter @ttp/treasury precheck --strategy <strategyId>`: vault caps and balance
+  - re-run `pnpm --filter @ttp/risk calibrate` once the perp is open: rescue band, with `--env-file` or `.env` loaded
+
 ## Also yours
 
 - Apply `CHANGES.md` requests to `packages/shared` (optional fields only).
