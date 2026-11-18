@@ -1,0 +1,18 @@
+{
+  "description": "Agent-initiated release within all onchain caps (DESIGN.md Section 17 definition of done).",
+  "contract": "ThesisTreasuryVault",
+  "vaultAddress": "0x1e9B755C7caA3d1D007d70A7cF77E93cc6A65E07",
+  "network": "arc-testnet",
+  "chainId": 5042002,
+  "call": "releaseWithinLimits(strategyId: \"strat_63491dbeab91\", destination: settlement, amount6: 1000000)",
+  "caller": "0x419792c79bC487e0fB4457080413A8973ACdc485",
+  "transactionHash": "0xc8183e39b6579785685170a0194191ebee53e3e3d223c99a759c54cb3978e1c3",
+  "status": "success",
+  "result": {
+    "state": "ARC_FINALIZED",
+    "amountUsdc": "1.000000",
+    "destination": "0x47D9A12bBC0c9EA77D2f9202b256e01A4eF9e618"
+  },
+  "explorerUrl": "https://explorer.testnet.arc.io/tx/0xc8183e39b6579785685170a0194191ebee53e3e3d223c99a759c54cb3978e1c3",
+  "source": "ONCHAIN_TESTNET"
+}
