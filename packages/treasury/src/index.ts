@@ -8,6 +8,15 @@ import { real } from "./real";
 export type { TreasuryApi };
 export { mock, resetMock, setPaused, simulateOwnerDecision };
 export { real } from "./real";
+export {
+  vaultAbi,
+  arcTestnet,
+  ARC_TESTNET_VAULT_ADDRESS,
+  arcTxUrl,
+  arcAddressUrl,
+  buildApproveRequestCall,
+  type ApproveRequestCall,
+} from "./owner";
 
 export const MODE: "mock" | "real" = process.env.TREASURY_MODE === "real" ? "real" : "mock";
 

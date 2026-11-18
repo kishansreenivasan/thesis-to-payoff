@@ -174,6 +174,23 @@ describe("evaluateRisk: resolved open requests fall through to the ratio bands",
   });
 });
 
+describe("evaluateRisk: a finished release must not loop (Section 8 step 7)", () => {
+  it.each(["ARC_FINALIZED", "VENUE_CREDIT_SIMULATED", "OWNER_APPROVED", "SUBMITTED"])(
+    "%s with the ratio still in the funding band -> REDUCE_PERP, not another request",
+    (state) => {
+      const d = evaluateRisk(
+        input({
+          margin: { equityUsd: "130", maintenanceMarginUsd: "100" }, // 1.30
+          openRequest: { requestId: "0xabc", state, expiresAtUtc: null as unknown as string },
+        }),
+      );
+      expect(d.action).toBe("REDUCE_PERP");
+      expect(d.nextState).toBe("DELEVERAGE_REQUIRED");
+      expect(d.reasonCode).toBe("FundingDidNotImproveMargin");
+    },
+  );
+});
+
 describe("evaluateRisk: shock math and guards", () => {
   it("applies shockPct to the index price, scaled by position size", () => {
     const d = evaluateRisk(

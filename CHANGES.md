@@ -107,11 +107,11 @@ Format:
   - Derive's `maintenance_margin` is net, so the requirement is `subaccount_value - maintenance_margin`.
   - An account made in the web app is owned by the EOA. If not, a session key is needed.
 
-## [Lane A -> Lane B, Lane C] Rescue-band calibration tool; venues mock collateral is out of band (NOTED)
+## [Lane A -> Lane C] Rescue-band calibration tool (NOTED)
 - When: 2026-11-18
 - What: `pnpm --filter @ttp/risk calibrate [--shock -15] [--target 1.35] [--size 0.0166 --mm-rate 0.05]` reads `venues.getMargin("perp")` and `getPositions("DERIVE","perp")` (VENUES_MODE mock or real), prints current vs projected ratio and the test USDC to deposit or withdraw to reach the 1.35 mid-band. Read only. The maths is `calibrateRescueBand` in `packages/risk/src/calibrate.ts` (same projection as `evaluateRisk`, tested against it). It is a dev script, not exported from `@ttp/risk`; `@ttp/venues` is a devDependency of `@ttp/risk` for it.
 - Confirmed: `packages/venues/src/derive.ts` converts Derive's net `maintenance_margin` to a gross requirement (`subaccount_value - maintenance_margin`), as Section 6.2 says, so `evaluateRisk`'s ratio and `topUpUsdc6` / `reduceQtyBtc` maths run on gross numbers unchanged.
-- **Lane B action (optional):** the venues mock has `PERP_COLLATERAL_USD = 260` and a 7.5% maintenance rate. With the 0.0166 BTC perp that projects 1.83 after -15% (WARN, no rescue), so `pnpm demo:mock` skips the vault attempt. About 235 lands at about 1.35 with that rate. Mid-band for the real 5% rate is also about 234.
+- Correction (2026-11-19): an earlier draft of this note said the venues mock was out of band. It is not: the planner sizes the perp so -15% hits the $160 stop (about 0.0164 BTC), and the mock's 7.5% maintenance rate and $260 collateral project about 1.25, inside [1.2, 1.5), which is why `pnpm demo:mock` shows the full rescue. The calibrate script's hypothetical mode (no perp open) uses the 5% Derive estimate, so its numbers differ from the mock's. No Lane B action needed.
 - **Heads-up for Lane C / demo script:** at mid-band collateral the top-up to reach 2.0 is about $35, not the $80 in DESIGN.md Section 8/16. It still exceeds the 25 USDC per-tx cap, so the revert still happens; only the amount in the narration differs. Read the amount from the decision, do not hardcode 80.
 - Unconfirmed until the perp subaccount is funded: Derive testnet's real perp maintenance rate (5% is the mainnet value).
 
@@ -122,3 +122,18 @@ Format:
 - **Lane C action:** none required for `demo:reset` (it needs no onchain hook). Optionally run `precheck` at the end of `demo:reset` and show its output. Keep `strategyId` stable across rehearsals; do not add a run id.
 - **Risk to know (humans / Lane C):** `strategyId = strat_<hash of the whole ThesisIntent>`, and the intent includes `rawText` and `horizonUtc`. If Grok words the thesis differently between rehearsals, the id changes, its cap is 0, and the 20 USDC allowed release (demo step 4) reverts with `ExceedsStrategyCap`. Run `precheck` with the id the compile response actually returns; the owner provisions it with the printed `setStrategyCap` command.
 - **Funding gap found by the first live run (2026-11-18):** the vault holds 22 USDC. The demo needs up to 100 USDC above the 10 USDC floor (20 allowed + an approved request). Human: send about 150 test USDC to the vault (keep gas on the sending wallet, see the gas/USDC note above).
+
+## [Lane A -> Lane C] Owner approval page: chain, ABI and approveRequest builder (APPLIED in Lane A; Lane C action needed)
+- When: 2026-11-18
+- What: browser-safe exports for `/approve/:requestId`, from `@ttp/treasury/owner` (also re-exported from `@ttp/treasury`; prefer the `/owner` subpath in `apps/web` so the server-side mock/real modules stay out of the browser bundle):
+  - `arcTestnet`: viem `defineChain` (id 5042002, RPC https://rpc.testnet.arc.io, explorer https://explorer.testnet.arc.io, native currency USDC with 18 decimals).
+  - `vaultAbi`, `ARC_TESTNET_VAULT_ADDRESS`, `arcTxUrl(hash)`, `arcAddressUrl(addr)`.
+  - `buildApproveRequestCall(requestId, vaultAddress?)`: validates the bytes32 id, returns `{ chainId, abi, address, functionName: "approveRequest", args, to, data }`. wagmi: `writeContract({ abi: c.abi, address: c.address, functionName: c.functionName, args: c.args, chainId: c.chainId })`, or `sendTransaction({ to: c.to, data: c.data })`.
+- **Lane C action:** wagmi config `chains: [arcTestnet]`; the page passes the request id from `GET /api/treasury/requests/:id` (it is the onchain bytes32 id). Next.js needs `transpilePackages: ["@ttp/treasury"]` because the package ships TypeScript source. Decline stays offchain (agent cancels onchain with its own key); nothing here approves on the owner's behalf.
+- Safety: the module has no env access and no key handling. The contract rejects any sender without OWNER_ROLE, so a wrong wallet's tx reverts.
+
+## [Lane A] evaluateRisk: a finished release in the funding band now reduces the perp (APPLIED)
+- When: 2026-11-19
+- What: found by the new integration test. With an `ARC_FINALIZED` / `VENUE_CREDIT_SIMULATED` / `OWNER_APPROVED` / `SUBMITTED` request on record and the projected ratio still in [1.2, 1.5), `evaluateRisk` used to fall through to `RELEASE_WITHIN_LIMITS` / `REQUEST_APPROVAL` again. Simulated credit never changes real margin, so that would have looped requests until the caps ran out. It now returns `REDUCE_PERP` with `reasonCode: "FundingDidNotImproveMargin"` (DESIGN.md Section 8 step 7). No schema change; `reasonCode` is a free string.
+- Lane C: no action. The approve path (owner approves, then the next shock tick) now ends in a reduce-only order instead of a second request.
+- Tests: `tests/integration/arc-rescue.test.ts` (mock mode in CI; a `TREASURY_LIVE=1` variant runs a real revert, a real request and an agent cancel, moving no funds, then a reduce-only order on the mock venue until Derive is funded).
