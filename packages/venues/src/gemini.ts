@@ -44,6 +44,18 @@ export function signGeminiPayload(payload: Record<string, unknown>, secret: stri
   return { b64, signature };
 }
 
+/**
+ * JSON.parse that keeps integers of 16+ digits as strings. Gemini order ids exceed
+ * Number.MAX_SAFE_INTEGER, and JSON.parse would silently round them.
+ */
+export function parseLossless(text: string): unknown {
+  try {
+    return JSON.parse(text.replace(/([:[,]\s*)(-?\d{16,})(?=\s*[,}\]])/g, '$1"$2"'));
+  } catch {
+    return null;
+  }
+}
+
 export interface GemOrder {
   orderId: number | string;
   status: "open" | "filled" | "cancelled";
@@ -109,7 +121,10 @@ export function createGeminiAdapter(opts: GeminiAdapterOptions = {}) {
 
   async function call<T>(path: string, params: Record<string, unknown> = {}, method: "POST" | "GET" = "POST"): Promise<T> {
     const { key, secret } = geminiCredsFromEnv(env);
-    const { b64, signature } = signGeminiPayload({ request: path, nonce: nonce(), ...params }, secret);
+    // Master API keys must name the account on every request (2026-11-18: sandbox replied
+    // 400 MissingAccounts without it). Account-level keys ("account-...") must not.
+    const account = key.startsWith("master-") ? { account: env.GEMINI_ACCOUNT || "primary" } : {};
+    const { b64, signature } = signGeminiPayload({ request: path, nonce: nonce(), ...account, ...params }, secret);
     const res = await fetchFn(`${base}${path}`, {
       method,
       headers: {
@@ -122,7 +137,7 @@ export function createGeminiAdapter(opts: GeminiAdapterOptions = {}) {
       },
       signal: AbortSignal.timeout(10_000),
     });
-    const body = (await res.json().catch(() => null)) as (T & { result?: string; reason?: string; message?: string }) | null;
+    const body = parseLossless(await res.text()) as (T & { result?: string; reason?: string; message?: string }) | null;
     if (!res.ok || !body || body.result === "error") {
       throw new GeminiError(path, res.status, body?.reason ?? "Error", body?.message ?? "request failed");
     }
@@ -200,7 +215,9 @@ export function createGeminiAdapter(opts: GeminiAdapterOptions = {}) {
       if (!known) throw new Error(`Gemini: unknown clientOrderId ${clientOrderId}`);
       const before = await findOrder(known.orderId);
       if (before && before.status !== "open") return toGeminiOrder(before, known.req);
-      await call("/v1/prediction-markets/order/cancel", { orderId: Number(known.orderId) });
+      // Send the id as a string: Gemini ids exceed 2^53, so Number() would round them (2026-11-18:
+      // ...723 became ...740 and the cancel hit "Order not found"). Gemini accepts the string form.
+      await call("/v1/prediction-markets/order/cancel", { orderId: known.orderId });
       const after = await findOrder(known.orderId);
       if (!after) throw new Error(`Gemini: order ${known.orderId} not found after cancel`);
       return toGeminiOrder(after, known.req);

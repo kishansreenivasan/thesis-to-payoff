@@ -1,0 +1,185 @@
+{
+  "ranAtUtc": "2026-11-18T23:08:05.352Z",
+  "steps": [
+    {
+      "step": "list active Dec 11 / Dec 25 calls",
+      "ok": true,
+      "result": [
+        "BTC-20261225-95000-C",
+        "BTC-20261225-90000-C",
+        "BTC-20261225-85000-C",
+        "BTC-20261225-80000-C",
+        "BTC-20261225-75000-C",
+        "BTC-20261225-70000-C",
+        "BTC-20261225-65000-C",
+        "BTC-20261225-60000-C",
+        "BTC-20261225-55000-C",
+        "BTC-20261225-50000-C",
+        "BTC-20261225-40000-C",
+        "BTC-20261225-300000-C",
+        "BTC-20261225-280000-C",
+        "BTC-20261225-260000-C",
+        "BTC-20261225-240000-C",
+        "BTC-20261225-230000-C",
+        "BTC-20261225-220000-C",
+        "BTC-20261225-210000-C",
+        "BTC-20261225-200000-C",
+        "BTC-20261225-20000-C",
+        "BTC-20261225-190000-C",
+        "BTC-20261225-180000-C",
+        "BTC-20261225-170000-C",
+        "BTC-20261225-160000-C",
+        "BTC-20261225-155000-C",
+        "BTC-20261225-150000-C",
+        "BTC-20261225-145000-C",
+        "BTC-20261225-140000-C",
+        "BTC-20261225-135000-C",
+        "BTC-20261225-130000-C",
+        "BTC-20261225-125000-C",
+        "BTC-20261225-120000-C",
+        "BTC-20261225-115000-C",
+        "BTC-20261225-110000-C",
+        "BTC-20261225-105000-C",
+        "BTC-20261225-100000-C"
+      ]
+    },
+    {
+      "step": "quote BTC-PERP",
+      "ok": true,
+      "result": {
+        "venue": "DERIVE",
+        "instrumentId": "BTC-PERP",
+        "bid": "62479.9",
+        "ask": "62483.9",
+        "bidSize": "5",
+        "askSize": "5",
+        "feeEstimateUsd": "18.74",
+        "timestamp": "2026-11-18T23:07:52.169Z",
+        "source": "TESTNET"
+      }
+    },
+    {
+      "step": "margin main subaccount",
+      "ok": true,
+      "result": {
+        "account": "main",
+        "equityUsd": "300.00",
+        "maintenanceMarginUsd": "0.00",
+        "initialMarginUsd": "0.00",
+        "marginRatio": "999",
+        "perpSizeBtc": "0",
+        "indexPriceUsd": "62482.00",
+        "source": "TESTNET",
+        "timestamp": "2026-11-18T23:07:53.194Z"
+      }
+    },
+    {
+      "step": "margin perp subaccount",
+      "ok": true,
+      "result": {
+        "account": "perp",
+        "equityUsd": "230.00",
+        "maintenanceMarginUsd": "0.00",
+        "initialMarginUsd": "0.00",
+        "marginRatio": "999",
+        "perpSizeBtc": "0",
+        "indexPriceUsd": "62482.00",
+        "source": "TESTNET",
+        "timestamp": "2026-11-18T23:07:53.221Z"
+      }
+    },
+    {
+      "step": "main: place + cancel 0.01 BTC-20261225-60000-C @ $5",
+      "ok": true,
+      "result": {
+        "clientOrderId": "smoke-d1-1795043273269",
+        "strategyId": "smoke",
+        "legId": "L1",
+        "venue": "DERIVE",
+        "account": "main",
+        "instrumentId": "BTC-20261225-60000-C",
+        "side": "BUY",
+        "quantity": "0.01",
+        "limitPrice": "5",
+        "reduceOnly": false,
+        "venueOrderId": "221ebb4e-8f8e-47e2-af16-179118583ea0",
+        "filledQuantity": "0",
+        "avgPrice": null,
+        "state": "REJECTED",
+        "source": "TESTNET",
+        "updatedAt": "2026-11-18T23:07:53.703Z"
+      }
+    },
+    {
+      "step": "main: order status",
+      "ok": true,
+      "result": {
+        "clientOrderId": "smoke-d1-1795043273269",
+        "strategyId": "smoke",
+        "legId": "L1",
+        "venue": "DERIVE",
+        "account": "main",
+        "instrumentId": "BTC-20261225-60000-C",
+        "side": "BUY",
+        "quantity": "0.01",
+        "limitPrice": "5",
+        "reduceOnly": false,
+        "venueOrderId": "221ebb4e-8f8e-47e2-af16-179118583ea0",
+        "filledQuantity": "0",
+        "avgPrice": null,
+        "state": "CANCELED",
+        "source": "TESTNET",
+        "updatedAt": "2026-11-18T23:07:53.703Z"
+      }
+    },
+    {
+      "step": "perp: place + cancel 0.01 BTC-PERP at 80% of index",
+      "ok": true,
+      "result": {
+        "clientOrderId": "smoke-d2-1795043279435",
+        "strategyId": "smoke",
+        "legId": "L2",
+        "venue": "DERIVE",
+        "account": "perp",
+        "instrumentId": "BTC-PERP",
+        "side": "BUY",
+        "quantity": "0.01",
+        "limitPrice": "49986",
+        "reduceOnly": false,
+        "venueOrderId": "e28f79da-2e68-4f76-949c-0a0400364f6e",
+        "filledQuantity": "0",
+        "avgPrice": null,
+        "state": "REJECTED",
+        "source": "TESTNET",
+        "updatedAt": "2026-11-18T23:07:59.828Z"
+      }
+    },
+    {
+      "step": "perp: order status",
+      "ok": true,
+      "result": {
+        "clientOrderId": "smoke-d2-1795043279435",
+        "strategyId": "smoke",
+        "legId": "L2",
+        "venue": "DERIVE",
+        "account": "perp",
+        "instrumentId": "BTC-PERP",
+        "side": "BUY",
+        "quantity": "0.01",
+        "limitPrice": "49986",
+        "reduceOnly": false,
+        "venueOrderId": "e28f79da-2e68-4f76-949c-0a0400364f6e",
+        "filledQuantity": "0",
+        "avgPrice": null,
+        "state": "CANCELED",
+        "source": "TESTNET",
+        "updatedAt": "2026-11-18T23:07:59.828Z"
+      }
+    },
+    {
+      "step": "perp: positions",
+      "ok": true,
+      "result": []
+    }
+  ]
+}

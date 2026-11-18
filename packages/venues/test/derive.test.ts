@@ -55,6 +55,7 @@ const base = {
   "public/get_instrument": (p: Record<string, unknown>) => instruments[p.instrument_name as string],
   "public/get_ticker": () => ({ b: "63936", a: "63936.1", B: "5", A: "0.0128", I: "63937.5", M: "63924.8", t: 1795009697708 }),
   "private/get_open_orders": () => ({ orders: [] }),
+  "private/get_order_history": () => ({ orders: [] }),
 };
 
 const dOrder = (over: Partial<DeriveOrder> = {}): DeriveOrder => ({
@@ -149,7 +150,8 @@ describe("Derive adapter", () => {
     expect(o).toMatchObject({ state: "FILLED", filledQuantity: "0.07", avgPrice: "3048.00", venue: "DERIVE", source: "TESTNET" });
     const c = calls.find((x) => x.method === "private/order")!;
     expect(c.params).toMatchObject({ subaccount_id: 101, instrument_name: option.instrument_name, direction: "buy", time_in_force: "gtc", reduce_only: false, amount: "0.07", limit_price: "3048", label: "c1", signer: signer.address });
-    expect(Number(c.params.max_fee)).toBeCloseTo(3048 * 0.0003 * 2 + 0.5, 2);
+    // cap = 3x taker fee on the INDEX (63,937.5) + base fee, since Derive checks fees against the index
+    expect(Number(c.params.max_fee)).toBeCloseTo(63937.5 * 0.0003 * 3 + 0.5, 1);
     expect(c.headers["X-DeriveWallet"]).toBe(signer.address);
     expect(c.headers["X-DeriveTimestamp"]).toBe("1795009697708");
     // the signature in the request recovers to our signer
@@ -158,6 +160,70 @@ describe("Derive adapter", () => {
       asset: option.base_asset_address as Hex, subId: BigInt(option.base_asset_sub_id), limitPrice: "3048", amount: "0.07", maxFee: c.params.max_fee as string, isBid: true,
     });
     expect(await recoverAddress({ hash: digest, signature: c.params.signature as Hex })).toBe(signer.address);
+  });
+
+  it("re-signs once at Derive's stated minimum when max_fee is too low", async () => {
+    const { fetchFn, calls } = fakeDerive({
+      ...base,
+      "private/order": (_p, n) => {
+        if (n === 1) throw { code: 11023, message: "Max fee order param is too low (signed max_fee must be >= 75.5)" };
+        return { order: dOrder({ order_status: "filled", filled_amount: "0.07", average_price: "3048" }), trades: [] };
+      },
+    });
+    const d = createDeriveAdapter({ fetchFn, env, sleep: noSleep });
+    expect((await d.placeOrder(callReq)).state).toBe("FILLED");
+    const orders = calls.filter((x) => x.method === "private/order");
+    expect(orders).toHaveLength(2);
+    expect(orders[1]!.params.max_fee).toBe("83.05"); // 75.5 x 1.1
+    expect(orders[1]!.params.nonce).not.toBe(orders[0]!.params.nonce);
+  });
+
+  it("falls back to order history when get_order says 11006 Does not exist", async () => {
+    let placed = false;
+    let cancelled = false;
+    let historyReads = 0;
+    const { fetchFn } = fakeDerive({
+      ...base,
+      "private/order": () => ((placed = true), { order: dOrder(), trades: [] }),
+      "private/cancel": () => ((cancelled = true), {}),
+      "private/get_order": () => {
+        throw { code: 11006, message: "Does not exist", data: "Order does not exist." };
+      },
+      // empty before placing; after the cancel the history lags one read, then shows the order
+      "private/get_order_history": () => {
+        if (!placed) return { orders: [] };
+        historyReads++;
+        return { orders: cancelled && historyReads > 1 ? [dOrder({ order_status: "cancelled" })] : [] };
+      },
+    });
+    const d = createDeriveAdapter({ fetchFn, env, sleep: noSleep, fillTimeoutMs: 0 });
+    expect((await d.placeOrder(callReq)).state).toBe("REJECTED");
+    expect((await d.getOrder("c1"))?.state).toBe("CANCELED");
+  });
+
+  it("when Derive's reads lag, getOrder returns the last state Derive reported instead of failing", async () => {
+    const { fetchFn } = fakeDerive({
+      ...base,
+      "private/order": () => ({ order: dOrder(), trades: [] }),
+      "private/cancel": () => dOrder({ order_status: "cancelled" }),
+      "private/get_order": () => {
+        throw { code: 11006, message: "Does not exist", data: "Order does not exist." };
+      },
+    });
+    const d = createDeriveAdapter({ fetchFn, env, sleep: noSleep, fillTimeoutMs: 0 });
+    expect((await d.placeOrder(callReq)).state).toBe("REJECTED"); // from the cancel reply, no read-back needed
+    expect((await d.getOrder("c1"))?.state).toBe("CANCELED"); // reads lag: last state Derive returned
+  });
+
+  it("finds an order by label in the history after a restart, and does not resend it", async () => {
+    const { fetchFn, calls } = fakeDerive({
+      ...base,
+      "private/get_order_history": () => ({ orders: [dOrder({ order_status: "filled", filled_amount: "0.07", average_price: "3048" })] }),
+    });
+    const d = createDeriveAdapter({ fetchFn, env, sleep: noSleep });
+    expect((await d.getOrder("c1"))?.state).toBe("FILLED");
+    expect((await d.placeOrder(callReq)).state).toBe("FILLED");
+    expect(calls.some((x) => x.method === "private/order")).toBe(false);
   });
 
   it("reduce-only perp sells go IOC on the perp subaccount", async () => {
