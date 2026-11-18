@@ -12,6 +12,7 @@ const FUNDING_RATIO = new Decimal("1.2");
 
 const PENDING_REQUEST_STATES = new Set(["REQUESTED", "OWNER_APPROVAL_NEEDED"]);
 const BAD_TERMINAL_REQUEST_STATES = new Set(["REJECTED", "EXPIRED", "FAILED"]);
+const RESOLVED_REQUEST_STATES = new Set(["OWNER_APPROVED", "SUBMITTED", "ARC_FINALIZED", "VENUE_CREDIT_SIMULATED"]);
 
 function usd(d: Decimal): string {
   return d.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
@@ -157,6 +158,18 @@ export function evaluateRisk(input: RiskInput): RiskDecision {
   }
 
   if (projectedRatio.gte(FUNDING_RATIO)) {
+    // Section 8 step 7: a release that already finished (or was simulated as credited to the venue)
+    // did not change the real margin, so asking the vault again would just loop. Reduce instead.
+    if (openRequest && RESOLVED_REQUEST_STATES.has(openRequest.state)) {
+      return deleverage(
+        projectedRatio,
+        perpSize,
+        projectedEquity,
+        maintenanceMargin,
+        "FundingDidNotImproveMargin",
+        `A release (${openRequest.state}) already completed but the real margin ratio is still ${projectedRatio.toFixed(2)}, below 1.5; simulated credit never changes real margin, so reducing the perp instead of requesting again.`,
+      );
+    }
     const topUpUsd = TARGET_RATIO.times(maintenanceMargin).minus(projectedEquity);
     const topUpUsdc6 = usdToUsdc6(topUpUsd);
     const withinLimits =
