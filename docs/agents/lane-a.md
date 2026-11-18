@@ -27,30 +27,30 @@ Selected by `TREASURY_MODE` and `RISK_MODE` (`mock` default, `real`).
 
 Tasks 1 to 6 are done. These keep the Section 16 demo working on real testnets.
 
-- [ ] 7. **Calibrate the -15% rescue band against Derive.** L1 and L2 moved to Derive testnet (see CHANGES.md). The demo needs the projected ratio after a -15% shock to land in [1.2, 1.5), so the agent tries the vault, reverts and requests approval, instead of jumping straight to DELEVERAGE.
+- [x] 7. (built and tested on the venues mock; live check pending until `DERIVE_*` is set) **Calibrate the -15% rescue band against Derive.** L1 and L2 moved to Derive testnet (see CHANGES.md). The demo needs the projected ratio after a -15% shock to land in [1.2, 1.5), so the agent tries the vault, reverts and requests approval, instead of jumping straight to DELEVERAGE.
   - **Rough numbers:** with the planned perp (`BTC-PERP`, about 0.0166 BTC, about $1,060 notional) and Derive's documented perp maintenance rate of 5% (mainnet value; testnet unconfirmed), maintenance is about $53 and a -15% shock loses about $159.
   - **Collateral:** $200 in the perp subaccount projects about 0.8 (too low). About $225 to $238 lands in band. Mid-band (1.35) is about $230.
   - **Build:** a script (for example `pnpm --filter @ttp/risk calibrate`) that reads the live perp margin and position through `@ttp/venues` (`getMargin("perp")`, `getPositions("DERIVE", "perp")`). It prints the current and projected ratio, and the test USDC to deposit or withdraw to hit 1.35. It must not move funds; a human deposits.
   - **Also:** re-check the Section 8 thresholds and the `topUpUsdc6` / `reduceQtyBtc` maths against Derive's margin. Derive reports net margins; `@ttp/venues` converts them to a gross requirement.
   - **Until the wallet is funded:** build and unit-test it against the venues mock.
-- [ ] 8. **Stop vault caps running out across rehearsals.**
+- [x] 8. **Stop vault caps running out across rehearsals.**
   - **The problem:** with no LLM, `strategyId` is a deterministic hash of the thesis text, so every rehearsal of the demo thesis reuses one strategy. Its 150 USDC strategy cap fills up: the 20 USDC allowed release (demo step 4), plus any approved 80 USDC request. The 50 USDC daily cap resets only at the UTC day boundary.
   - **Pick one and document it:**
     - (a) The treasury keys vault calls by `strategyId` + a run id, so each `demo:reset` gets fresh strategy room. Treasury owns the onchain key; coordinate the `demo:reset` hook with Lane C.
     - (b) An owner script to reset limits, run by a human with the owner wallet. The owner key never goes on the server.
   - **Add a pre-rehearsal check:** it prints remaining daily cap, remaining strategy cap, vault balance against the reserve floor, and agent gas. Remember that Arc test USDC is also gas (CHANGES.md).
-- [ ] 9. **Owner approval page support for Lane C.** Export from `@ttp/treasury`:
+- [x] 9. **Owner approval page support for Lane C.** Export from `@ttp/treasury`:
   - the vault ABI
   - an Arc testnet `defineChain` for wagmi/viem
   - a typed helper that builds the `approveRequest(requestId)` call
 
   Lane C's `/approve/:requestId` page then just connects the owner wallet and sends it.
-- [ ] 10. **Integration tests for the Arc side** (in `tests/integration/`; Lane A may add files there):
+- [x] 10. **Integration tests for the Arc side** (in `tests/integration/`; Lane A may add files there):
   - revert, then request, then decline, leads to a reduce-only order
   - simulated venue credit never changes `MarginSnapshot`
 
   Run them in mock mode in CI, and in real mode behind `TREASURY_LIVE=1`.
-- [ ] 11. **README text for Lane C to paste** (README is Lane C's): vault address and deploy tx, the four evidence tx explorer links, how Arc is used (onchain spending rules, owner approval), and the Arc quirks from CHANGES.md as risk notes. Put the draft in `docs/agents/lane-a-readme-draft.md`.
+- [x] 11. **README text for Lane C to paste** (README is Lane C's): vault address and deploy tx, the four evidence tx explorer links, how Arc is used (onchain spending rules, owner approval), and the Arc quirks from CHANGES.md as risk notes. Put the draft in `docs/agents/lane-a-readme-draft.md`.
 
 ## Start conditions
 
