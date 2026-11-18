@@ -106,3 +106,11 @@ Format:
 - Unconfirmed until the Derive smoke test runs:
   - Derive's `maintenance_margin` is net, so the requirement is `subaccount_value - maintenance_margin`.
   - An account made in the web app is owned by the EOA. If not, a session key is needed.
+
+## [Lane A -> Lane B, Lane C] Rescue-band calibration tool; venues mock collateral is out of band (NOTED)
+- When: 2026-11-18
+- What: `pnpm --filter @ttp/risk calibrate [--shock -15] [--target 1.35] [--size 0.0166 --mm-rate 0.05]` reads `venues.getMargin("perp")` and `getPositions("DERIVE","perp")` (VENUES_MODE mock or real), prints current vs projected ratio and the test USDC to deposit or withdraw to reach the 1.35 mid-band. Read only. The maths is `calibrateRescueBand` in `packages/risk/src/calibrate.ts` (same projection as `evaluateRisk`, tested against it). It is a dev script, not exported from `@ttp/risk`; `@ttp/venues` is a devDependency of `@ttp/risk` for it.
+- Confirmed: `packages/venues/src/derive.ts` converts Derive's net `maintenance_margin` to a gross requirement (`subaccount_value - maintenance_margin`), as Section 6.2 says, so `evaluateRisk`'s ratio and `topUpUsdc6` / `reduceQtyBtc` maths run on gross numbers unchanged.
+- **Lane B action (optional):** the venues mock has `PERP_COLLATERAL_USD = 260` and a 7.5% maintenance rate. With the 0.0166 BTC perp that projects 1.83 after -15% (WARN, no rescue), so `pnpm demo:mock` skips the vault attempt. About 235 lands at about 1.35 with that rate. Mid-band for the real 5% rate is also about 234.
+- **Heads-up for Lane C / demo script:** at mid-band collateral the top-up to reach 2.0 is about $35, not the $80 in DESIGN.md Section 8/16. It still exceeds the 25 USDC per-tx cap, so the revert still happens; only the amount in the narration differs. Read the amount from the decision, do not hardcode 80.
+- Unconfirmed until the perp subaccount is funded: Derive testnet's real perp maintenance rate (5% is the mainnet value).
