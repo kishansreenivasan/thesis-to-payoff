@@ -75,3 +75,15 @@ Format:
   - Gemini: a NO order's `price` is the NO price (we send 0.68 when YES bids 0.32).
   - Gemini: requests have no client order id and there is no lookup by order id. The adapter maps clientOrderId to orderId in memory and searches active orders, then history. After a process restart, `getOrder` returns null for older Gemini orders, so Lane C should persist `venueOrderId` with the clientOrderId.
 - Behavior: Deribit orders wait up to 30 s for a fill, then cancel. A fully unfilled order comes back `REJECTED` (reason NO_FILL); a partial fill comes back `CANCELED` with its `filledQuantity`. Gemini orders go out one at a time. The adapter refuses to trade if prediction terms are not accepted, and never accepts them itself.
+
+## [Lane B -> Lane C] No Anthropic: Grok fills compile_thesis fields (APPLIED in Lane B; Lane C action needed)
+- When: 2026-11-18
+- What: decision by the team: no LLM API on our server, Grok Bot only. `@ttp/strategy` no longer depends on `@anthropic-ai/sdk`, and `LLM_API_KEY` is gone.
+  - `strategy.parseThesis(text)` is unchanged in signature. In both mock and real it is now the offline keyword parser, so `/api/theses/compile` keeps working as is.
+  - New exports from `@ttp/strategy`:
+    - `COMPILE_THESIS_INPUT_SCHEMA`: JSON Schema for the MCP tool input.
+    - `intentFromGrok(args)`: validates Grok's arguments and returns `ThesisIntent | UnsupportedThesis`. It never throws.
+- **Lane C action:**
+  - In `packages/mcp`, give the `compile_thesis` tool `inputSchema: COMPILE_THESIS_INPUT_SCHEMA` and call `intentFromGrok(args)` instead of `parseThesis(args.text)`. If the result is a `ThesisIntent`, continue to `buildPlan` as today.
+  - Optional: accept the same fields on `POST /api/theses/compile` alongside `text`.
+- Why: Grok already reads the user's message, so a second model on the server is redundant. The deterministic gate still rejects unsupported theses and any max-risk number not present in the user's text.

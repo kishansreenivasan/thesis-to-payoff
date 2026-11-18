@@ -1,8 +1,8 @@
-// parseThesis (Lane B). The LLM only classifies and extracts; deterministic code below decides
+// Thesis understanding (Lane B). There is no LLM on our server: Grok Bot reads the user's message
+// and calls the MCP tool `compile_thesis` with the fields below. Deterministic code here decides
 // whether the thesis is supported and builds the ThesisIntent (DESIGN.md Sections 2 and 10).
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { z } from "zod/v4"; // the SDK zod helper needs the v4 API (bundled in zod 3.25)
+// Text typed into the dashboard goes through the offline keyword parser instead.
+import { z } from "zod";
 import { ThesisIntent as ThesisIntentSchema, type ThesisIntent, type UnsupportedThesis } from "@ttp/shared";
 
 export const SUPPORTED_EXAMPLES = [
@@ -11,18 +11,54 @@ export const SUPPORTED_EXAMPLES = [
 ];
 
 export const DEFAULT_HORIZON_UTC = "2026-12-11T08:00:00.000Z";
-export const MODEL = "claude-opus-5-5";
 
-/** What the LLM returns. Nothing here is trusted until `toIntent` checks it. */
-export const ThesisExtraction = z.object({
+/** Fields extracted from the user's message (by Grok, or by the offline parser). Untrusted until `toIntent`. */
+export const ThesisFields = z.object({
   underlying: z.enum(["BTC", "OTHER", "UNCLEAR"]),
   direction: z.enum(["BULLISH", "BEARISH", "NEUTRAL", "UNCLEAR"]),
-  horizonDate: z.string().nullable().describe("YYYY-MM-DD if the user named a date or month, else null"),
-  maxRiskUsd: z.number().nullable().describe("The maximum loss in USD the user stated, else null"),
-  fedHikeConcern: z.boolean().describe("True only if the user worries the Fed hikes more than expected"),
-  otherConcerns: z.array(z.string()).describe("Any other risks or instruments the user asked for"),
+  horizonDate: z.string().nullable().default(null),
+  maxRiskUsd: z.number().nullable(),
+  fedHikeConcern: z.boolean(),
+  otherConcerns: z.array(z.string()).default([]),
 });
-export type ThesisExtraction = z.infer<typeof ThesisExtraction>;
+export type ThesisFields = z.infer<typeof ThesisFields>;
+/** @deprecated kept for existing imports; same as ThesisFields. */
+export type ThesisExtraction = ThesisFields;
+
+/** Arguments Grok sends to the MCP tool `compile_thesis`. */
+export const CompileThesisArgs = ThesisFields.extend({
+  text: z.string().min(1).max(2000).describe("The user's thesis, verbatim"),
+});
+export type CompileThesisArgs = z.infer<typeof CompileThesisArgs>;
+
+/**
+ * JSON Schema for the `compile_thesis` MCP tool input (Lane C plugs this into the tool definition).
+ * The descriptions are what Grok reads when filling the fields.
+ */
+export const COMPILE_THESIS_INPUT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["text", "underlying", "direction", "maxRiskUsd", "fedHikeConcern"],
+  properties: {
+    text: { type: "string", description: "The user's thesis, copied verbatim." },
+    underlying: { type: "string", enum: ["BTC", "OTHER", "UNCLEAR"], description: "BTC if the thesis is about bitcoin." },
+    direction: { type: "string", enum: ["BULLISH", "BEARISH", "NEUTRAL", "UNCLEAR"], description: "The user's view on that asset." },
+    horizonDate: {
+      type: ["string", "null"],
+      description: 'YYYY-MM-DD for the horizon the user named ("into December" = 2026-12-11), or null.',
+    },
+    maxRiskUsd: {
+      type: ["number", "null"],
+      description: "The maximum loss in USD exactly as the user stated it. Null if they did not state one. Never estimate.",
+    },
+    fedHikeConcern: { type: "boolean", description: "True only if the user worries the Fed raises rates more than expected." },
+    otherConcerns: {
+      type: "array",
+      items: { type: "string" },
+      description: "Other hedges, assets or events the user asked for. Empty if none.",
+    },
+  },
+} as const;
 
 const unsupported = (reason: string): UnsupportedThesis => ({
   supported: false,
@@ -30,13 +66,13 @@ const unsupported = (reason: string): UnsupportedThesis => ({
   supportedExamples: SUPPORTED_EXAMPLES,
 });
 
-/** Digits in the user's own text, e.g. "$1,500" -> "1500". Used to check the LLM did not invent a number. */
+/** Numbers in the user's own text, e.g. "$1,500" -> "1500". Used to check no number was invented. */
 function numbersIn(text: string): Set<string> {
   return new Set((text.match(/\d[\d,]*(\.\d+)?/g) ?? []).map((n) => String(Number(n.replace(/,/g, "")))));
 }
 
-/** Deterministic gate from LLM extraction to ThesisIntent. */
-export function toIntent(x: ThesisExtraction, rawText: string): ThesisIntent | UnsupportedThesis {
+/** Deterministic gate from extracted fields to ThesisIntent. */
+export function toIntent(x: ThesisFields, rawText: string): ThesisIntent | UnsupportedThesis {
   if (x.underlying !== "BTC") return unsupported("Only BTC theses are supported right now.");
   if (x.direction !== "BULLISH") return unsupported("Only bullish BTC theses are supported right now.");
   if (x.otherConcerns.length > 0) {
@@ -63,58 +99,36 @@ export function toIntent(x: ThesisExtraction, rawText: string): ThesisIntent | U
   });
 }
 
-const SYSTEM = `You extract fields from a short trading thesis. Extract only; never suggest trades, sizes or prices.
-- underlying: BTC if the thesis is about bitcoin, OTHER for another asset, UNCLEAR if not stated.
-- direction: the user's view on that asset.
-- horizonDate: an ISO date (YYYY-MM-DD) for the horizon they named. "Into December" means 2026-12-11. Null if none.
-- maxRiskUsd: the dollar maximum loss exactly as the user stated it. Null if they did not state one. Never estimate.
-- fedHikeConcern: true only for worry that the Federal Reserve raises rates more than expected.
-- otherConcerns: other hedges, assets or events they asked for (empty if none).
-Today is ${new Date().toISOString().slice(0, 10)}.`;
-
-let client: Anthropic | null = null;
-function getClient(): Anthropic {
-  if (!process.env.LLM_API_KEY) {
-    throw new Error("parseThesis: LLM_API_KEY is not set (DESIGN.md Section 13, item 8). Use STRATEGY_MODE=mock until then.");
-  }
-  client ??= new Anthropic({ apiKey: process.env.LLM_API_KEY });
-  return client;
+/**
+ * Entry point for Grok: validates the `compile_thesis` tool arguments, then applies the same gate.
+ * Malformed arguments become a friendly UnsupportedThesis, never an exception.
+ */
+export function intentFromGrok(args: unknown): ThesisIntent | UnsupportedThesis {
+  const parsed = CompileThesisArgs.safeParse(args);
+  if (!parsed.success) return unsupported("I couldn't read that thesis. Try one of the examples.");
+  const { text, ...fields } = parsed.data;
+  return toIntent(fields, text.trim());
 }
 
-export async function parseThesisWithLlm(text: string): Promise<ThesisIntent | UnsupportedThesis> {
-  const rawText = text.trim();
-  if (!rawText) return unsupported("Please describe your market view.");
-  if (rawText.length > 2000) return unsupported("Please keep the thesis under 2,000 characters.");
-
-  // Server-side fallbacks: if Opus 5.5 declines, the API re-runs on a model picked by refusal category.
-  const response = await getClient().beta.messages.parse({
-    model: MODEL,
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    max_tokens: 4000,
-    output_config: { effort: "low", format: zodOutputFormat(ThesisExtraction) },
-    system: SYSTEM,
-    messages: [{ role: "user", content: rawText }],
-  });
-
-  if (response.stop_reason === "refusal") return unsupported("I can't help with that request.");
-  if (!response.parsed_output) return unsupported("I couldn't understand that thesis. Try one of the examples.");
-  return toIntent(response.parsed_output, rawText);
-}
-
-/** Keyword parser used by the mock: no network, same gate as the real one. */
+/** Offline keyword parser for text typed into the dashboard (and the mock). Same gate as Grok's path. */
 export function parseThesisOffline(text: string): ThesisIntent | UnsupportedThesis {
-  const t = text.toLowerCase();
-  const risk = /max(?:imum)?\s*risk[^\d$]*\$?\s*([\d,]+(?:\.\d+)?)/i.exec(text);
+  const raw = text.trim();
+  if (!raw) return unsupported("Please describe your market view.");
+  if (raw.length > 2000) return unsupported("Please keep the thesis under 2,000 characters.");
+  const t = raw.toLowerCase();
+  const risk =
+    /max(?:imum)?\s*(?:risk|loss)[^\d$]*\$?\s*([\d,]+(?:\.\d+)?)/i.exec(raw) ??
+    /\$\s*([\d,]+(?:\.\d+)?)\s*(?:max(?:imum)?\s*)?(?:risk|loss)/i.exec(raw) ??
+    /risk(?:ing)?\s*(?:up\s*to\s*)?\$\s*([\d,]+(?:\.\d+)?)/i.exec(raw);
   return toIntent(
     {
-      underlying: /\b(btc|bitcoin)\b/.test(t) ? "BTC" : /\b(eth|sol|spy|gold|tesla|nvda)\b/.test(t) ? "OTHER" : "UNCLEAR",
-      direction: /\b(bear|bearish|short|crash)\b/.test(t) ? "BEARISH" : /\b(bull|bullish|long|up)\b/.test(t) ? "BULLISH" : "UNCLEAR",
+      underlying: /\b(btc|bitcoin)\b/.test(t) ? "BTC" : /\b(eth|ether|sol|spy|gold|tesla|tsla|nvda)\b/.test(t) ? "OTHER" : "UNCLEAR",
+      direction: /\b(bear|bearish|short|crash|dump)\b/.test(t) ? "BEARISH" : /\b(bull|bullish|long|up|higher|rally)\b/.test(t) ? "BULLISH" : "UNCLEAR",
       horizonDate: /\bdec(ember)?\b/.test(t) ? "2026-12-11" : null,
       maxRiskUsd: risk ? Number(risk[1]!.replace(/,/g, "")) : null,
-      fedHikeConcern: /\bfed\b/.test(t) && /\bhike/.test(t),
+      fedHikeConcern: /\b(fed|fomc|powell)\b/.test(t) && /\b(hike|hikes|hiking|raise|raises)\b/.test(t),
       otherConcerns: [],
     },
-    text.trim(),
+    raw,
   );
 }

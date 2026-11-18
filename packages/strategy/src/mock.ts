@@ -1,4 +1,4 @@
-// Strategy mock (Lane B). parseThesis uses an offline keyword parser (no LLM call).
+// Strategy mock (Lane B). parseThesis uses the offline keyword parser, same as real.
 // buildPlan and payoffGrid are pure and deterministic, so the mock shares the real ones.
 import type { StrategyApi } from "@ttp/shared";
 import { buildPlan } from "./plan";

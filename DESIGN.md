@@ -63,7 +63,7 @@ If the sandbox later lists `FED261211`, L3a becomes a real sandbox order with no
 4. **Never trade or transfer on mainnet.** Reading public Gemini mainnet market data without keys is allowed.
 5. **Label everything.** Every external number, order and transaction carries a `source` field (Section 5).
 6. **Stay in your directories** (Section 0, rule 5).
-7. **LLM output never sets numbers.** The LLM only fills `ThesisIntent`. Deterministic code selects instruments, prices, sizes and checks limits.
+7. **Model output never sets numbers.** Grok Bot only supplies the thesis fields that become `ThesisIntent` (Section 10). There is no LLM on our server. Deterministic code selects instruments, prices, sizes and checks limits.
 8. **Do not claim** anything in Section 12.
 
 ---
@@ -99,7 +99,7 @@ Only the orchestrator composes packages. Packages import only `packages/shared`.
 | Contracts | Solidity, Foundry |
 | Tests | Vitest, forge test |
 | State | SQLite (better-sqlite3) with an append-only events table |
-| LLM | Anthropic API, structured output into `ThesisIntent` only |
+| Language understanding | Grok Bot only. Grok fills the `compile_thesis` MCP tool fields; our code validates them into `ThesisIntent`. No LLM API on the server. |
 | Hosting | Railway or Render, one service for API + MCP + web |
 
 No other languages, queues, Redis, or microservices.
@@ -653,7 +653,7 @@ GET  /api/health
 
 | Tool | Effect |
 |---|---|
-| `compile_thesis` | text to draft plan, or a clear "not supported" reply |
+| `compile_thesis` | Grok sends the user's text plus the fields it extracted (`COMPILE_THESIS_INPUT_SCHEMA` in `@ttp/strategy`); returns a draft plan or a clear "not supported" reply |
 | `discover_events` | live Gemini events relevant to the thesis |
 | `quote_payoff` | prices, legs, payoff by Fed outcome |
 | `approve_strategy` | records approval for a versionHash |
@@ -665,7 +665,7 @@ MCP tools call orchestrator functions only. No financial logic in MCP.
 
 ### Unsupported theses
 
-`parseThesis` supports only bullish BTC with an optional Fed-hike concern and a max risk. Anything else returns `UnsupportedThesis` with a friendly reason and two example theses that work. The app never invents a plan for an unsupported thesis.
+Grok's fields go through `intentFromGrok`; text typed into the dashboard goes through `parseThesis` (an offline keyword parser). Both apply the same deterministic gate. It supports only bullish BTC with an optional Fed-hike concern and a max risk, and rejects a max risk that does not appear in the user's text. Anything else returns `UnsupportedThesis` with a friendly reason and two example theses that work. The app never invents a plan for an unsupported thesis.
 
 ---
 
@@ -712,7 +712,7 @@ Agents cannot do these. Values go in `.env` on the host and locally.
 | 5 | Owner wallet in a browser wallet. Owner key never on the server | none | Lane A deploy, approval page |
 | 6 | Railway or Render project with a public HTTPS URL | `PUBLIC_BASE_URL`, `MCP_BEARER_TOKEN` | Lane C |
 | 7 | Grok Bot access; add our MCP server as a custom connector | none | Lane C testing |
-| 8 | Anthropic API key | `LLM_API_KEY` | Lane B |
+| 8 | (Removed 2026-11-18: no Anthropic API. Grok Bot does the language understanding.) | none | none |
 | 9 | Public GitHub repo created this week; agents get push access | none | all |
 | 10 | Ask Gemini (office hours or dev team) whether `FED261211` can be listed in sandbox | none | L3a upgrade |
 | 11 | (Extra) Telegram bot token and chat id | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | alerts |

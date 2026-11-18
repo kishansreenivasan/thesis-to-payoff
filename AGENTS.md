@@ -58,7 +58,7 @@ Install pnpm via corepack if it is missing: `corepack enable` (or prefix command
 - Never create accounts, handle passwords, or request API keys. Read secrets from env only.
 - Never trade or transfer on mainnet. Public Gemini mainnet market data is fine.
 - Every external number, order and tx carries a `source` field.
-- LLM output only fills `ThesisIntent`. Code picks instruments, prices, sizes, limits.
+- No LLM on our server. Grok Bot only supplies thesis fields; code validates them and picks instruments, prices, sizes, limits.
 - Never claim anything in DESIGN.md Section 12.
 
 ## After every task
