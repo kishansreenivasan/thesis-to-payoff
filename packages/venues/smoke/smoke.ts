@@ -1,18 +1,18 @@
 // Venue smoke tests (DESIGN.md Section 6). Run once keys are in .env:
 //   pnpm --filter @ttp/venues smoke            (both venues)
-//   pnpm --filter @ttp/venues smoke gemini     (or: deribit)
+//   pnpm --filter @ttp/venues smoke gemini     (or: derive)
 // Places only resting orders far from the market, then cancels them. Testnet and sandbox only.
-// Writes redacted responses to evidence/gemini-smoke.json and evidence/deribit-smoke.json.
+// Writes redacted responses to evidence/gemini-smoke.json and evidence/derive-smoke.json.
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import Decimal from "decimal.js";
-import { createDeribitAdapter, DERIBIT_TESTNET_BASE } from "../src/deribit";
+import { createDeriveAdapter, DERIVE_TESTNET_API } from "../src/derive";
 import { createGeminiAdapter, GEMINI_SANDBOX_BASE } from "../src/gemini";
 import { geminiOrderInstrument } from "../src/conventions";
-import { listDeribitCalls, real } from "../src/real";
+import { listCalls, real } from "../src/real";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
-if (!DERIBIT_TESTNET_BASE.includes("test.deribit.com") || !GEMINI_SANDBOX_BASE.includes("sandbox")) {
+if (!DERIVE_TESTNET_API.includes("testnet.api.derive.xyz") || !GEMINI_SANDBOX_BASE.includes("sandbox")) {
   throw new Error("smoke: refusing to run against a non-test host");
 }
 
@@ -63,41 +63,42 @@ async function gemini() {
   save("evidence/gemini-smoke.json", steps);
 }
 
-async function deribit() {
-  console.log("Deribit testnet");
+async function derive() {
+  console.log("Derive testnet");
   const steps: Step[] = [];
   // fillTimeoutMs 0: the adapter cancels a resting order straight away, exercising place + cancel.
-  const d = createDeribitAdapter({ fillTimeoutMs: 0 });
-  const calls = ((await run(steps, "list 11DEC26/25DEC26 calls", () => listDeribitCalls(["11DEC26", "25DEC26"]))) ?? []) as string[];
-  await run(steps, "quote BTC_USDC-PERPETUAL", () => real.getQuote("DERIBIT", "BTC_USDC-PERPETUAL", "testnet"));
-  await run(steps, "account summary main", () => d.getMargin("main"));
-  await run(steps, "account summary perp", () => d.getMargin("perp"));
+  const d = createDeriveAdapter({ fillTimeoutMs: 0 });
+  const calls = ((await run(steps, "list active Dec 11 / Dec 25 calls", () => listCalls(["20261211", "20261225"]))) ?? []) as string[];
+  await run(steps, "quote BTC-PERP", () => real.getQuote("DERIVE", "BTC-PERP", "testnet"));
+  await run(steps, "margin main subaccount", () => d.getMargin("main"));
+  await run(steps, "margin perp subaccount", () => d.getMargin("perp"));
   const idx = new Decimal((await real.getIndexPrice()).priceUsd);
-  // Strike nearest the index, so the order looks like L1 (it still rests far below the ask at $5).
+  // Strike nearest the index, like L1. A $5 bid rests far below the ask.
   const strikeOf = (c: string) => new Decimal(c.split("-")[2]!);
   const option = [...calls].sort((a, b) => strikeOf(a).sub(idx).abs().cmp(strikeOf(b).sub(idx).abs()))[0];
   if (option) {
     const id = `smoke-d1-${Date.now()}`;
-    await run(steps, `main: place + cancel 0.1 ${option} @ $5`, () =>
-      d.placeOrder({ clientOrderId: id, strategyId: "smoke", legId: "L1", venue: "DERIBIT", account: "main", instrumentId: option, side: "BUY", quantity: "0.1", limitPrice: "5", reduceOnly: false }),
+    await run(steps, `main: place + cancel 0.01 ${option} @ $5`, () =>
+      d.placeOrder({ clientOrderId: id, strategyId: "smoke", legId: "L1", venue: "DERIVE", account: "main", instrumentId: option, side: "BUY", quantity: "0.01", limitPrice: "5", reduceOnly: false }),
     );
     await run(steps, "main: order status", () => d.getOrder(id));
   }
   const id2 = `smoke-d2-${Date.now()}`;
-  await run(steps, "perp: place + cancel 0.0001 BTC_USDC-PERPETUAL at half the index", () =>
-    d.placeOrder({ clientOrderId: id2, strategyId: "smoke", legId: "L2", venue: "DERIBIT", account: "perp", instrumentId: "BTC_USDC-PERPETUAL", side: "BUY", quantity: "0.0001", limitPrice: idx.div(2).toDecimalPlaces(0).toString(), reduceOnly: false }),
+  // Perp min is 0.01 BTC; a bid at 80% of index stays inside Derive's price band and rests.
+  await run(steps, "perp: place + cancel 0.01 BTC-PERP at 80% of index", () =>
+    d.placeOrder({ clientOrderId: id2, strategyId: "smoke", legId: "L2", venue: "DERIVE", account: "perp", instrumentId: "BTC-PERP", side: "BUY", quantity: "0.01", limitPrice: idx.mul("0.8").toDecimalPlaces(0).toString(), reduceOnly: false }),
   );
   await run(steps, "perp: order status", () => d.getOrder(id2));
   await run(steps, "perp: positions", () => d.getPositions("perp"));
-  save("evidence/deribit-smoke.json", steps);
+  save("evidence/derive-smoke.json", steps);
 }
 
 const which = process.argv[2];
 const need = {
   gemini: ["GEMINI_SANDBOX_KEY", "GEMINI_SANDBOX_SECRET"],
-  deribit: ["DERIBIT_CLIENT_ID", "DERIBIT_CLIENT_SECRET", "DERIBIT_PERP_CLIENT_ID", "DERIBIT_PERP_CLIENT_SECRET"],
+  derive: ["DERIVE_WALLET", "DERIVE_SIGNER_PRIVATE_KEY", "DERIVE_MAIN_SUBACCOUNT_ID", "DERIVE_PERP_SUBACCOUNT_ID"],
 };
-for (const venue of ["gemini", "deribit"] as const) {
+for (const venue of ["gemini", "derive"] as const) {
   if (which && which !== venue) continue;
   const missing = need[venue].filter((k) => !process.env[k]);
   if (missing.length) {
@@ -107,4 +108,4 @@ for (const venue of ["gemini", "deribit"] as const) {
   }
 }
 if (!which || which === "gemini") await gemini();
-if (!which || which === "deribit") await deribit();
+if (!which || which === "derive") await derive();

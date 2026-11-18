@@ -87,3 +87,22 @@ Format:
   - In `packages/mcp`, give the `compile_thesis` tool `inputSchema: COMPILE_THESIS_INPUT_SCHEMA` and call `intentFromGrok(args)` instead of `parseThesis(args.text)`. If the result is a `ThesisIntent`, continue to `buildPlan` as today.
   - Optional: accept the same fields on `POST /api/theses/compile` alongside `text`.
 - Why: Grok already reads the user's message, so a second model on the server is redundant. The deterministic gate still rejects unsupported theses and any max-risk number not present in the user's text.
+
+## [Lane B -> Lane C, Lane A] L1/L2 venue is Derive testnet, not Deribit (APPLIED in Lane B; action needed)
+- When: 2026-11-18
+- What:
+  - **Shared (small edit in Lane C's package, made with the switch):** `Venue` now includes `"DERIVE"`; `"DERIBIT"` stays for compatibility. DESIGN.md Section 5 is updated to match.
+  - `buildPlan` emits L1 and L2 with `venue: "DERIVE"`. Instruments: `BTC-20261211-<strike>-C` (Dec 11 activates 2026-11-20 08:00 UTC; Dec 25 until then) and `BTC-PERP`. Accounts are still `main` and `perp` (two Derive subaccounts).
+  - `@ttp/venues` treats `"DERIBIT"` as an alias for `"DERIVE"`, so the existing `getPositions("DERIBIT", "perp")`, `getQuote("DERIBIT", ...)` and `placeOrder({ venue: "DERIBIT" })` calls in `apps/api/src/app.ts` keep working.
+  - Removed: `deribit.ts` and the `DERIBIT_*` env vars. Added: `derive.ts` and `DERIVE_WALLET`, `DERIVE_SIGNER_PRIVATE_KEY`, `DERIVE_MAIN_SUBACCOUNT_ID`, `DERIVE_PERP_SUBACCOUNT_ID`.
+  - `listDeribitCalls` is renamed `listCalls` (old name kept as an alias). It takes `"20261211"` or `"11DEC26"`.
+  - Reduce-only on Derive only works for non-resting orders, so the adapter sends reduce-only sells as IOC.
+  - The Derive testnet BTC index (about 63,900) differs from Gemini's sandbox BTC price (about 65,200). Label each with its source.
+- **Edit made in Lane C's file, to keep `pnpm demo:mock` green:** `apps/api/src/app.ts` found the perp with `includes("PERPETUAL")`. Derive's perp is `BTC-PERP`, so that one check is now `includes("PERP")`, which matches both names. Nothing else in `apps/` changed.
+- **Lane C action:**
+  - Replace the `"DERIBIT"` literals in `apps/api/src/app.ts` with `"DERIVE"`. The alias is temporary.
+  - Dashboard copy should say Derive.
+- **Lane A action:** none required. Treasury tests that pass `"DERIBIT"` as the venue label still type-check.
+- Unconfirmed until the Derive smoke test runs:
+  - Derive's `maintenance_margin` is net, so the requirement is `subaccount_value - maintenance_margin`.
+  - An account made in the web app is owned by the EOA. If not, a session key is needed.

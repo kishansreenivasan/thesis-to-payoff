@@ -4,13 +4,13 @@ import { z } from "zod";
 export const Source = z.enum([
   "LIVE_MAINNET_READONLY", // public market data from mainnet, no keys
   "SANDBOX",               // Gemini sandbox
-  "TESTNET",               // Deribit testnet
+  "TESTNET",               // Derive testnet (Deribit before 2026-11-18)
   "ONCHAIN_TESTNET",       // Arc testnet transaction
   "SIMULATED",             // computed or mocked by us
   "UNVERIFIED",
 ]);
 
-export const Venue = z.enum(["GEMINI", "DERIBIT", "ARC"]);
+export const Venue = z.enum(["GEMINI", "DERIBIT", "ARC", "DERIVE"]); // DERIBIT kept for compatibility; L1/L2 use DERIVE
 export const Dec = z.string().regex(/^-?\d+(\.\d+)?$/); // decimal as string
 
 export const ThesisIntent = z.object({

@@ -7,7 +7,8 @@ import { real } from "./real";
 export type { StrategyApi };
 export { mock } from "./mock";
 export { real } from "./real";
-export { buildPlan, PlanError, BUDGET_SHARES, L1_EXPIRY_PREFERENCE, FED_HEDGE_SYMBOL, L3B_EVENT } from "./plan";
+export { buildPlan, PlanError, BUDGET_SHARES, L1_EXPIRY_PREFERENCE, L1L2_VENUE, FED_HEDGE_SYMBOL, L3B_EVENT } from "./plan";
+export { parseOption, isPerp } from "./instruments";
 export { payoffGrid } from "./payoff";
 export {
   SUPPORTED_EXAMPLES,

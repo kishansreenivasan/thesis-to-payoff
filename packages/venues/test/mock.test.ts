@@ -8,9 +8,9 @@ const perpOrder = (side: "BUY" | "SELL", quantity: string, id: string, reduceOnl
   clientOrderId: id,
   strategyId: "s1",
   legId: "L2",
-  venue: "DERIBIT" as const,
+  venue: "DERIVE" as const,
   account: "perp" as const,
-  instrumentId: "BTC_USDC-PERPETUAL",
+  instrumentId: "BTC-PERP",
   side,
   quantity,
   limitPrice: side === "BUY" ? "64885.00" : "64875.00",
@@ -20,7 +20,7 @@ const perpOrder = (side: "BUY" | "SELL", quantity: string, id: string, reduceOnl
 describe("venues mock", () => {
   it("returns schema-valid SIMULATED data", async () => {
     const v = createMockVenues();
-    const q = Quote.parse(await v.getQuote("DERIBIT", "BTC-11DEC26-65000-C"));
+    const q = Quote.parse(await v.getQuote("DERIVE", "BTC-20261211-65000-C"));
     expect(q.source).toBe("SIMULATED");
     const events = (await v.discoverGeminiEvents("mainnet", "FED")).map((e) => GeminiEvent.parse(e));
     expect(events.map((e) => e.eventTicker)).toEqual(["FED261211"]);
@@ -34,7 +34,9 @@ describe("venues mock", () => {
     const b = await v.placeOrder(perpOrder("BUY", "0.0164", "c1"));
     expect(a.state).toBe("FILLED");
     expect(b.venueOrderId).toBe(a.venueOrderId);
-    const [pos] = (await v.getPositions("DERIBIT", "perp")).map((p) => VenuePosition.parse(p));
+    const [pos] = (await v.getPositions("DERIVE", "perp")).map((p) => VenuePosition.parse(p));
+    // the old venue name still works for callers written before the switch
+    expect((await v.getPositions("DERIBIT", "perp"))[0]!.venue).toBe("DERIVE");
     expect(pos!.quantity).toBe("0.0164");
     expect(await v.getOrder("DERIBIT", "missing")).toBeNull();
   });

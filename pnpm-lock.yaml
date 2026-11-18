@@ -144,6 +144,9 @@ importers:
       decimal.js:
         specifier: ^10.4.3
         version: 10.6.0
+      viem:
+        specifier: ^2.21.0
+        version: 2.58.0(typescript@5.9.3)(zod@3.25.76)
       zod:
         specifier: ^3.23.8
         version: 3.25.76

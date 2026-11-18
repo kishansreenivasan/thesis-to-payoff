@@ -2,7 +2,7 @@
 // Every value here is SIMULATED; the dashboard labels it as such.
 import Decimal from "decimal.js";
 import type { PayoffGrid, Quote, StrategyPlan } from "@ttp/shared";
-import { parseDeribitOption, parseGeminiStrike } from "./instruments";
+import { parseOption, parseGeminiStrike } from "./instruments";
 import { PERP_STOP_MOVE } from "./plan";
 
 /** Grid spans -30%..+30% around the reference price in 5% steps. */
@@ -27,7 +27,7 @@ export function payoffGrid(plan: StrategyPlan, quotes: Quote[]): PayoffGrid {
       const qty = new Decimal(leg.quantity);
       const cost = new Decimal(leg.maxCostUsd);
       if (leg.type === "CALL") {
-        const o = parseDeribitOption(leg.instrumentId);
+        const o = parseOption(leg.instrumentId);
         const k = o ? o.strike : new Decimal(0);
         pnl = pnl.add(Decimal.max(P.sub(k), 0).mul(qty)).sub(cost);
       } else if (leg.type === "PERP") {

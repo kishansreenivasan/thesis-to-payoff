@@ -2,7 +2,7 @@
 
 UBC Hackathon 2026 · DeFi and Onchain Applications · Arc · Gemini Prediction Markets · Grok Bot.
 
-Type a market view in plain English. The agent builds a small multi-leg position across Deribit testnet and Gemini Prediction Markets, then manages margin with an Arc testnet vault that enforces spending limits onchain.
+Type a market view in plain English. The agent builds a small multi-leg position across Derive testnet (onchain options and perps) and Gemini Prediction Markets, then manages margin with an Arc testnet vault that enforces spending limits onchain.
 
 > Testnet and sandbox only. No mainnet trading or transfers.
 
