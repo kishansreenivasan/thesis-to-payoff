@@ -50,3 +50,17 @@ Format:
   zeroes its gas, leaving it unable to send further transactions. Keep a gas buffer when funding.
   `ThesisTreasuryVault` itself needs no change (it only ever reads `balanceOf`/`safeTransfer`), but
   anyone scripting Arc transfers should account for this before draining a balance to zero.
+
+## [Lane A] Arc testnet RPC caps eth_getLogs by (block range x topic count) (NOTED)
+- When: 2026-11-18 22:30 UTC
+- What: a single-topic `eth_getLogs` filter (one event signature) succeeded over a ~6300-block
+  range, but the same range failed with "requested range too large" once the filter's topic0
+  became an OR of ~13 event signatures (viem's `getContractEvents`/`watchContractEvent` build this
+  automatically when you pass a multi-event ABI without an `eventName`). A single-topic filter over
+  a *wider* range (the full history since deploy, ~14k blocks) also succeeded. So the cap tracks
+  something like (range x topics), not range alone.
+- Why: `packages/treasury/src/real.ts`'s `watchVaultEvents` opens one `watchContractEvent` per event
+  name instead of one combined multi-event watch, to stay on the side of this limit that's been
+  verified to work. A continuous live watch (small per-poll range) probably wouldn't have hit this
+  either way, but a one-shot historical backfill over a wide range with the full ABI will - worth
+  knowing for anyone adding a backfill or an indexer against this RPC.
