@@ -211,6 +211,11 @@ function createMockVenues() {
   return api;
 }
 
+/** Mock counterpart of real.listDeribitCalls. */
+export async function listDeribitCallsMock(expiryCodes: string[]): Promise<string[]> {
+  return Object.keys(BOOKS).filter((id) => id.endsWith("-C") && expiryCodes.some((c) => id.includes(`-${c}-`)));
+}
+
 /** Fresh mock with empty order and position state (use in tests and demo:reset). */
 export { createMockVenues };
 
