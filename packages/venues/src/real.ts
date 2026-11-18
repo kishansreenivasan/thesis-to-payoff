@@ -69,6 +69,19 @@ async function deribitQuote(instrumentId: string): Promise<Quote> {
   };
 }
 
+/**
+ * Listed BTC call instrument names for the given expiry codes (e.g. ["11DEC26", "25DEC26"]).
+ * Not part of VenuesApi: the orchestrator uses it to know which strikes to quote for L1.
+ */
+export async function listDeribitCalls(expiryCodes: string[]): Promise<string[]> {
+  const r = await getJson<DeribitResp<{ instrument_name: string; option_type: string }[]>>(
+    `${DERIBIT_TESTNET}/public/get_instruments?currency=BTC&kind=option&expired=false`,
+  );
+  return r.result
+    .filter((i) => i.option_type === "call" && expiryCodes.some((c) => i.instrument_name.includes(`-${c}-`)))
+    .map((i) => i.instrument_name);
+}
+
 // ---------- Gemini (public) ----------
 
 type GemContract = {

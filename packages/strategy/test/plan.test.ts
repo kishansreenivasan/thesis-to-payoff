@@ -84,8 +84,8 @@ describe("buildPlan, edge cases", () => {
     expectPlanError(() => buildPlan(demoIntent, quotes), "L1_BUDGET_BELOW_MIN_SIZE");
   });
 
-  it("refuses when no L3b strike is at or below BTC", () => {
-    const quotes = demoQuotes().filter((q) => !/HI(60000|62500)$/.test(q.instrumentId));
+  it("refuses when no L3b strike has a YES bid", () => {
+    const quotes = demoQuotes().map((q) => (q.instrumentId.includes("BTC2611302200") ? { ...q, bid: null, bidSize: null } : q));
     expectPlanError(() => buildPlan(demoIntent, quotes), "NO_L3B_STRIKE");
   });
 
@@ -96,5 +96,45 @@ describe("buildPlan, edge cases", () => {
 
   it("needs a perp quote", () => {
     expectPlanError(() => buildPlan(demoIntent, demoQuotes().filter((q) => !q.instrumentId.includes("PERP"))), "NO_PERP_QUOTE");
+  });
+});
+
+describe("buildPlan, decisions of 2026-11-18", () => {
+  it("L1 takes the lowest out-of-the-money call whose 0.1 BTC fits when at-the-money is too expensive", () => {
+    const quotes = demoQuotes().map((q) =>
+      q.instrumentId === "BTC-11DEC26-65000-C" ? { ...q, ask: "3470.00" } : q,
+    );
+    const p = buildPlan(demoIntent, quotes);
+    const l1 = p.legs.find((l) => l.legId === "L1")!;
+    expect(l1.instrumentId).toBe("BTC-11DEC26-70000-C");
+    expect(l1.quantity).toBe("0.2"); // $230 / ($750 + $19.46 fee) = 0.298 BTC, floored to 0.1 steps
+    expect(p.assumptions.some((a) => a.includes("out-of-the-money"))).toBe(true);
+  });
+
+  it("L1 never picks an in-the-money strike to fit the budget", () => {
+    const quotes = demoQuotes().map((q) => (q.instrumentId.includes("-C") && !q.instrumentId.includes("60000") ? { ...q, ask: "9000.00" } : q));
+    expectPlanError(() => buildPlan(demoIntent, quotes), "L1_BUDGET_BELOW_MIN_SIZE");
+  });
+
+  it("L3b falls back to the lowest strike above BTC when none is at or below", () => {
+    const quotes = demoQuotes().filter((q) => !/HI(60000|62500)$/.test(q.instrumentId));
+    const p = buildPlan(demoIntent, quotes);
+    const l3b = p.legs.find((l) => l.legId === "L3b")!;
+    expect(l3b.instrumentId).toBe("GEMI-BTC2611302200-HI65000");
+    expect(l3b.limitPrice).toBe("0.55");
+    expect(p.assumptions.some((a) => a.includes("lowest strike above"))).toBe(true);
+  });
+
+  it("L3b ignores strikes with no YES bid and caps size at NO liquidity", () => {
+    const quotes = demoQuotes()
+      .filter((q) => !/HI(60000|62500|65000)$/.test(q.instrumentId))
+      .map((q) => (q.instrumentId.endsWith("HI67500") ? { ...q, bid: "0.32", bidSize: "1", ask: null, askSize: null } : q))
+      .concat({ ...demoQuotes()[5]!, instrumentId: "GEMI-BTC2611302200-HI70000", bid: null, bidSize: null });
+    const p = buildPlan(demoIntent, quotes);
+    const l3b = p.legs.find((l) => l.legId === "L3b")!;
+    expect(l3b.instrumentId).toBe("GEMI-BTC2611302200-HI67500");
+    expect(l3b.limitPrice).toBe("0.68");
+    expect(l3b.quantity).toBe("1");
+    expect(p.assumptions.some((a) => a.includes("capped"))).toBe(true);
   });
 });

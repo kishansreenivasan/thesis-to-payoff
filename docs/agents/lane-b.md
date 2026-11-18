@@ -29,6 +29,8 @@ Tasks 1 and 5: now. Tasks 2 to 4: when Gemini and Deribit keys are in `.env`.
 
 ## Reminders
 
+- **L1 strike (decided 2026-11-18):** at-the-money if 0.1 BTC fits the L1 budget, else the lowest out-of-the-money strike that fits. Quote strikes from `listDeribitCalls()` in `@ttp/venues`.
+- **L3b strike (decided 2026-11-18):** highest strike at or below BTC with a YES bid, else the lowest strike above BTC. Size capped at NO liquidity.
 - **L1 expiry (decided 2026-11-17, see BLOCKED.md):** prefer 11DEC26; if Deribit testnet does not list it, use 25DEC26. Select at runtime, never hardcode. Recheck daily alongside the FED261211 check.
 - Verify every endpoint against official docs first. Differences go in `CHANGES.md`; missing features go in `BLOCKED.md`.
 - Testnet only: cross the spread to fill; cancel after 30 s and report `REJECTED` / `NO_FILL`.
