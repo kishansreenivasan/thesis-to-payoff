@@ -709,7 +709,7 @@ Agents cannot do these. Values go in `.env` on the host and locally.
 |---|---|---|---|
 | 1 | Gemini sandbox account, accept prediction terms, trading API key, fund test USD | `GEMINI_SANDBOX_KEY`, `GEMINI_SANDBOX_SECRET` | Lane B |
 | 2 | Derive testnet: a fresh test-only EVM wallet, Sepolia ETH from a faucet, connect at testnet.app.derive.xyz, mint test USDC, deposit about $300 into a main subaccount | `DERIVE_WALLET`, `DERIVE_SIGNER_PRIVATE_KEY`, `DERIVE_MAIN_SUBACCOUNT_ID` | Lane B |
-| 3 | Derive testnet second subaccount for the perp, about $200 test USDC | `DERIVE_PERP_SUBACCOUNT_ID` | Lane B |
+| 3 | Derive testnet second subaccount for the perp, about $230 test USDC (Lane A's calibration script gives the exact amount for the -15% rescue band) | `DERIVE_PERP_SUBACCOUNT_ID` | Lane B |
 | 4 | Arc testnet wallets: owner, agent, guardian, settlement. Faucet USDC for gas and vault | `ARC_AGENT_PRIVATE_KEY`, `ARC_OWNER_ADDRESS`, `ARC_GUARDIAN_ADDRESS`, `ARC_SETTLEMENT_ADDRESS` | Lane A |
 | 5 | Owner wallet in a browser wallet. Owner key never on the server | none | Lane A deploy, approval page |
 | 6 | Railway or Render project with a public HTTPS URL | `PUBLIC_BASE_URL`, `MCP_BEARER_TOKEN` | Lane C |
