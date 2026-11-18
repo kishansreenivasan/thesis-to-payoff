@@ -1,5 +1,5 @@
 // buildPlan (Lane B): deterministic instrument selection, sizing and budget checks.
-// The LLM never touches anything in this file (DESIGN.md Section 2, rule 7).
+// No model output touches anything in this file (DESIGN.md Section 2, rule 7).
 import { createHash } from "node:crypto";
 import Decimal from "decimal.js";
 import type { Leg, Quote, StrategyPlan, ThesisIntent } from "@ttp/shared";

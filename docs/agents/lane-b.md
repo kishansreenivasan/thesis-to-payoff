@@ -20,7 +20,7 @@ Selected by `VENUES_MODE` and `STRATEGY_MODE` (`mock` default, `real`).
 - [x] 2. (Built from docs; confirm with smoke test.) Gemini adapter: mainnet read-only discovery + quotes; sandbox auth, order, status, positions, cancel.
 - [x] 3. (Built from docs; confirm with smoke test.) Deribit adapter: instruments, book, account summary (main + perp), buy, sell with `reduce_only`, positions, cancel, index price.
 - [ ] 4. (Script ready: `pnpm --filter @ttp/venues smoke`; needs keys.) Smoke tests → `evidence/gemini-smoke.json`, `evidence/deribit-smoke.json` (redacted).
-- [x] 5. `parseThesis` (Anthropic API, structured output into `ThesisIntent` only), `buildPlan`, `payoffGrid`, with unit tests.
+- [x] 5. Thesis gate (`intentFromGrok` for Grok's `compile_thesis` fields, offline `parseThesis` for dashboard text; no LLM API), `buildPlan`, `payoffGrid`, with unit tests.
 - [ ] 6. Daily: does Gemini sandbox list `FED261211`? Record in `STATUS.md`.
 
 ## Start conditions
@@ -35,4 +35,4 @@ Tasks 1 and 5: now. Tasks 2 to 4: when Gemini and Deribit keys are in `.env`.
 - Verify every endpoint against official docs first. Differences go in `CHANGES.md`; missing features go in `BLOCKED.md`.
 - Testnet only: cross the spread to fill; cancel after 30 s and report `REJECTED` / `NO_FILL`.
 - Note in `CHANGES.md` which perp you used for L2 (linear USDC perp vs `BTC-PERPETUAL`).
-- The LLM never sets numbers. `buildPlan` is deterministic and respects the $500 budget table.
+- No model output sets numbers. `buildPlan` is deterministic and respects the $500 budget table.

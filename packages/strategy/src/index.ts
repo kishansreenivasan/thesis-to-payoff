@@ -9,7 +9,15 @@ export { mock } from "./mock";
 export { real } from "./real";
 export { buildPlan, PlanError, BUDGET_SHARES, L1_EXPIRY_PREFERENCE, FED_HEDGE_SYMBOL, L3B_EVENT } from "./plan";
 export { payoffGrid } from "./payoff";
-export { SUPPORTED_EXAMPLES, toIntent } from "./thesis";
+export {
+  SUPPORTED_EXAMPLES,
+  toIntent,
+  intentFromGrok,
+  parseThesisOffline,
+  CompileThesisArgs,
+  COMPILE_THESIS_INPUT_SCHEMA,
+  ThesisFields,
+} from "./thesis";
 
 export const MODE: "mock" | "real" = process.env.STRATEGY_MODE === "real" ? "real" : "mock";
 
