@@ -16,6 +16,16 @@ Append new entries at the top. Format: DESIGN.md Section 14. Humans fill in "Dec
 
 ---
 
+## [Lane B] Deribit testnet sign-up unavailable to the team (RESOLVED)
+- When: 2026-11-18
+- Task: human setup items 2-3 (Deribit testnet accounts and API keys)
+- Expected: DESIGN.md Section 13: humans create Deribit testnet accounts
+- Actual: the team could not create a Deribit testnet account, even over a VPN.
+- Evidence: Derive testnet checked live on 2026-11-18. It lists BTC options for 20261211 (activates 2026-11-20 08:00 UTC) and 20261225 (active, ATM 65000C about 3,048 bid/ask, 5 BTC size), min 0.01 BTC, and BTC-PERP (tight spread, min 0.01 BTC). The Gemini sandbox also lists BTCGUSDPERP.
+- Options I see: 1) Derive testnet for L1 and L2; 2) perp on Gemini sandbox, option venue still needed; 3) keep Deribit.
+- Meanwhile: n/a
+- Decision (filled by humans): 2026-11-18. Use Derive testnet for L1 (call) and L2 (perp). The L1 out-of-the-money fallback is no longer needed at current prices (0.07 BTC ATM fits $230). Live plan: BTC-20261225-65000-C 0.07 BTC ($210.57), BTC-PERP 0.0166 BTC; modeled max loss $441.25.
+
 ## [Lane B] L1 budget too small for Deribit's 0.1 BTC option minimum (RESOLVED)
 - When: 2026-11-18 00:10 UTC
 - Task: buildPlan against live Deribit testnet quotes (task 5)

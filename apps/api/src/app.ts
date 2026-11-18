@@ -178,7 +178,8 @@ export function buildApp(deps: Dependencies = {}) {
       deps.venues.getPositions("DERIBIT", "perp"),
       deps.treasury.getTreasuryStatus(),
     ]);
-    const perp = perpPositions.find((item) => item.instrumentId.includes("PERPETUAL"));
+    // Derive "BTC-PERP"; "PERP" also matches the old Deribit "*-PERPETUAL" names.
+    const perp = perpPositions.find((item) => item.instrumentId.includes("PERP"));
     const priorRequest = rescueRequests.get(request.params.id) ?? null;
     const remainingDaily = BigInt(treasuryStatus.dailyCapUsdc6) - BigInt(treasuryStatus.spentTodayUsdc6);
     const decision = deps.risk.evaluateRisk(RiskInput.parse({

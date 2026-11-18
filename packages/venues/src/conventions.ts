@@ -2,10 +2,10 @@
 // Recorded in CHANGES.md so Lane C knows how to read quotes and build Gemini orders.
 //
 // Quote prices:
-//   - Deribit options: bid/ask in USD per 1 BTC of option (converted from BTC with the index at quote time).
-//   - Deribit perps:   bid/ask in USD per 1 BTC.
+//   - Derive options:  bid/ask in USD (USDC) per 1 BTC of option, as Derive quotes them.
+//   - Derive perp:     bid/ask in USD per 1 BTC.
 //   - Gemini events:   bid/ask are the YES book in USD per contract (0..1). Buying NO costs 1 - YES bid.
-//   - feeEstimateUsd:  estimated fee for ONE unit of quantity (1 BTC on Deribit, 1 contract on Gemini).
+//   - feeEstimateUsd:  estimated taker fee for ONE unit of quantity (1 BTC on Derive, 1 contract on Gemini).
 //
 // Gemini outcome on orders: OrderRequest has no outcome field yet (proposed in CHANGES.md).
 // Until it exists, Gemini order instrumentIds carry a suffix: "<instrumentSymbol>:YES" or ":NO".
@@ -22,6 +22,5 @@ export function parseGeminiOrderInstrument(instrumentId: string): { symbol: stri
   return { symbol: m[1]!, outcome: m[2] as EventOutcome };
 }
 
-/** Deribit testnet fee estimates (verify against docs before relying on them for P&L). */
-export const DERIBIT_OPTION_FEE_BTC_PER_CONTRACT = 0.0003; // capped at 12.5% of option price
-export const DERIBIT_PERP_TAKER_FEE_RATE = 0.0005;
+/** Derive testnet taker fee rate (public/get_instrument, 2026-11-18). Options: rate x index, capped at 12.5% of premium. */
+export const DERIVE_TAKER_FEE_RATE = 0.0003;
