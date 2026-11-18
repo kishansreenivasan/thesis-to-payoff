@@ -38,3 +38,15 @@ Format:
 - When: 2026-11-18 00:10 UTC
 - What: `outcome: z.enum(["YES", "NO"]).optional()` on `OrderRequest` in packages/shared. Gemini event orders need it; Deribit ignores it.
 - Why: replaces the `:YES` / `:NO` instrumentId suffix above. Optional field, so nothing breaks.
+
+## [Lane A] Arc testnet USDC at 0x3600...0000 mirrors the native gas balance (NOTED)
+- When: 2026-11-18 01:50 UTC
+- What: `balanceOf` on the ERC-20 at `ARC_USDC_ADDRESS` is not an independent ledger. It returns the
+  same account's native balance rescaled from 18 to 6 decimals (confirmed: a `transfer()` call emits
+  a mirrored `Transfer` event from `0xfff...ffe`, and the agent's "USDC" balance dropped by the exact
+  gas cost of unrelated transactions, e.g. deploying the vault). Moving "USDC" in or out of an address
+  on this chain also moves its native gas balance, and vice versa.
+- Why: funding the vault (or any address) by transferring the full "USDC" balance off an EOA also
+  zeroes its gas, leaving it unable to send further transactions. Keep a gas buffer when funding.
+  `ThesisTreasuryVault` itself needs no change (it only ever reads `balanceOf`/`safeTransfer`), but
+  anyone scripting Arc transfers should account for this before draining a balance to zero.
