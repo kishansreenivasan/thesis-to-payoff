@@ -15,12 +15,12 @@ Selected by `VENUES_MODE` and `STRATEGY_MODE` (`mock` default, `real`).
 
 ## Tasks, in order
 
-- [ ] 1. `packages/venues/src/mock.ts` and `packages/strategy/src/mock.ts`. Realistic fixed data for all four legs (L1, L2, L3a, L3b), `source: "SIMULATED"`. Wire into `src/index.ts`. Merge. **Others are waiting on this.**
+- [x] 1. `packages/venues/src/mock.ts` and `packages/strategy/src/mock.ts`. Realistic fixed data for all four legs (L1, L2, L3a, L3b), `source: "SIMULATED"`. Wire into `src/index.ts`. Merge. **Others are waiting on this.**
   - Venues mock `getMargin("perp")` should return a ratio around 2.4 so a -15% shock pushes the projection below 1.5.
-- [ ] 2. Gemini adapter: mainnet read-only discovery + quotes; sandbox auth, order, status, positions, cancel.
-- [ ] 3. Deribit adapter: instruments, book, account summary (main + perp), buy, sell with `reduce_only`, positions, cancel, index price.
+- [ ] 2. (Public reads done: discovery, quotes via /v1/book.) Gemini adapter: mainnet read-only discovery + quotes; sandbox auth, order, status, positions, cancel.
+- [ ] 3. (Public reads done: index, order book.) Deribit adapter: instruments, book, account summary (main + perp), buy, sell with `reduce_only`, positions, cancel, index price.
 - [ ] 4. Smoke tests → `evidence/gemini-smoke.json`, `evidence/deribit-smoke.json` (redacted).
-- [ ] 5. `parseThesis` (Anthropic API, structured output into `ThesisIntent` only), `buildPlan`, `payoffGrid`, with unit tests.
+- [x] 5. `parseThesis` (Anthropic API, structured output into `ThesisIntent` only), `buildPlan`, `payoffGrid`, with unit tests.
 - [ ] 6. Daily: does Gemini sandbox list `FED261211`? Record in `STATUS.md`.
 
 ## Start conditions

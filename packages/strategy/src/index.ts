@@ -1,14 +1,17 @@
 // @ttp/strategy, owned by Lane B. See docs/agents/lane-b.md.
-//
-// TODO(Lane B):
-//   1. Create src/mock.ts:  export const mock = { ... } satisfies StrategyApi;
-//   2. Create src/real.ts:  export const real = { ... } satisfies StrategyApi;
-//   3. Replace the placeholder below with:
-//        export const strategy: StrategyApi = MODE === "real" ? real : mock;
-//
 // Import only from @ttp/shared. Never import another lane's package.
 import type { StrategyApi } from "@ttp/shared";
+import { mock } from "./mock";
+import { real } from "./real";
 
 export type { StrategyApi };
+export { mock } from "./mock";
+export { real } from "./real";
+export { buildPlan, PlanError, BUDGET_SHARES, L1_EXPIRY_PREFERENCE, FED_HEDGE_SYMBOL, L3B_EVENT } from "./plan";
+export { payoffGrid } from "./payoff";
+export { SUPPORTED_EXAMPLES, toIntent } from "./thesis";
 
 export const MODE: "mock" | "real" = process.env.STRATEGY_MODE === "real" ? "real" : "mock";
+
+/** The implementation selected by STRATEGY_MODE (default mock). */
+export const strategy: StrategyApi = MODE === "real" ? real : mock;
