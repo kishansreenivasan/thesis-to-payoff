@@ -6,7 +6,7 @@ Type a market view in plain English. The agent builds a small multi-leg position
 
 > Testnet and sandbox only. No mainnet trading or transfers.
 
-**Agents and contributors: start at [AGENTS.md](AGENTS.md).** Full spec: [DESIGN.md](DESIGN.md).
+**Agents and contributors: start at [AGENTS.md](AGENTS.md).** Full spec: [DESIGN.md](DESIGN.md). Human to-dos: [docs/HUMAN-TODO.md](docs/HUMAN-TODO.md).
 
 ## Quick start
 

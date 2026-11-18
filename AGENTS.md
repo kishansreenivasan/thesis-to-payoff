@@ -11,6 +11,7 @@ This file tells you where everything is. The full spec is [DESIGN.md](DESIGN.md)
    - Lane B (venues, strategy): [docs/agents/lane-b.md](docs/agents/lane-b.md)
    - Lane C (shared, orchestrator, MCP, web, submission): [docs/agents/lane-c.md](docs/agents/lane-c.md)
 3. [STATUS.md](STATUS.md), [BLOCKED.md](BLOCKED.md), [CHANGES.md](CHANGES.md) for the current state.
+4. [docs/HUMAN-TODO.md](docs/HUMAN-TODO.md) for what is waiting on the humans. Don't do those yourself.
 
 ## Ownership (stay in your directories)
 
