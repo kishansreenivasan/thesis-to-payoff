@@ -8,13 +8,13 @@ Spec: DESIGN.md Sections 4 (Lane C), 5, 8 (monitoring loop), 9, 10, 11, 16, 17. 
 
 ## Current status (2026-11-19)
 
-The Lane C handoff work C1-C8 is merged into `main` in [PR #23](https://github.com/kishansreenivasan/thesis-to-payoff/pull/23). Lane A and Lane B implementation branches are already ancestors of `main`; no additional code from those branches needs to be cherry-picked.
+Lane A and Lane B work is in `main`. Lane C's coordinator, monitoring/event log, and MCP HTTP transport are merged in [PR #26](https://github.com/kishansreenivasan/thesis-to-payoff/pull/26); its CI checks passed.
 
 - C1-C8: implemented and merged. Live venue validation used public/read-only quotes; authenticated Derive trading is not configured locally.
-- C9: open. The compile-thesis tool schema/handler exists, but the MCP HTTP transport and deployment remain to be built/configured. Needs a host URL and bearer token.
-- C10: partially complete. Arc precheck ran on 2026-11-19: 22 USDC balance, 12 USDC above reserve floor, versus up to 100 USDC needed for the rehearsal. Live calibration still needs Derive signing credentials and an open perp.
+- C9: transport and bearer auth are implemented and merged; hosting, public URL, and Grok connector setup remain.
+- C10: partially complete. Arc precheck on 2026-11-19 found 22 USDC balance (12 above reserve), 50 USDC daily-cap room, and 119 USDC strategy-cap room; vault balance is short of the up-to-100-USDC rehearsal need. Live calibration needs Derive signing credentials and an open perp.
 
-Other Lane C scope still open: the 10-second monitoring/event loop and authenticated order coordination. These can be built against mocks while live credentials and hosting are pending.
+Remaining work is hosting, live testnet setup/rehearsal, and submission materials; optional Telegram alerts remain out of scope until credentials are available.
 
 Do any follow-up work on a branch based on the latest `main`.
 
@@ -22,12 +22,13 @@ Do any follow-up work on a branch based on the latest `main`.
 
 - [x] 1. Repo skeleton, pnpm workspace, `pnpm check`, `STATUS.md`, `BLOCKED.md`, `CHANGES.md`, `packages/shared` verbatim from Section 5, lane interfaces in `packages/shared/src/interfaces.ts`. (Done in the initial commit.)
 - [x] 2. Orchestrator + REST routes (Section 10) in `apps/api` against Lane A/B mocks. `pnpm demo:mock` runs the mock rescue flow; real quote reads are integrated.
-- [x] 3. Execution coordinator and 10 s monitoring loop, with SQLite append-only activity events, are implemented locally and pass the mock integration flow. Live execution still needs Derive credentials and careful rehearsal.
+- [x] 3. Execution coordinator and 10 s monitoring loop, with SQLite append-only activity events, are implemented and merged; the mock integration flow passes. Live execution still needs Derive credentials and careful rehearsal.
 - [x] 4. Dashboard and `/approve/:requestId` owner wallet page are implemented. The page uses Wagmi and inline styling; polish beyond the required handoff remains optional.
-- [x] 5. Stateless MCP HTTP transport and bearer auth are implemented locally; mock tool flow passes. Hosting configuration and deployment at `PUBLIC_BASE_URL` remain open.
+- [x] 5. Stateless MCP HTTP transport and bearer auth are implemented and merged; mock tool flow passes. Hosting configuration and deployment at `PUBLIC_BASE_URL` remain open.
 - [x] 6. Real read-only quote integration and mock-mode integration tests are in place. Authenticated live order execution remains blocked on credentials.
-- [ ] 7. README and demo script are updated. Video script, Devpost text and Grok chat export remain.
-- [ ] 8. Extra after Thu 2 PM: Telegram alerts.
+- [x] 7. README and mock demo script are updated.
+- [ ] 8. Video script, Devpost text and Grok chat export.
+- [ ] 9. Extra: Telegram alerts, if time and credentials are available.
 
 ## Hand-offs from Lanes A and B (added 2026-11-18, in priority order)
 
