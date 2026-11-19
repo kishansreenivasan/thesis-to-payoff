@@ -22,9 +22,9 @@ Do any follow-up work on a branch based on the latest `main`.
 
 - [x] 1. Repo skeleton, pnpm workspace, `pnpm check`, `STATUS.md`, `BLOCKED.md`, `CHANGES.md`, `packages/shared` verbatim from Section 5, lane interfaces in `packages/shared/src/interfaces.ts`. (Done in the initial commit.)
 - [x] 2. Orchestrator + REST routes (Section 10) in `apps/api` against Lane A/B mocks. `pnpm demo:mock` runs the mock rescue flow; real quote reads are integrated.
-- [ ] 3. Execution coordinator (Section 9) and 10 s monitoring loop (Section 8). SQLite append-only events table.
+- [x] 3. Execution coordinator and 10 s monitoring loop, with SQLite append-only activity events, are implemented locally and pass the mock integration flow. Live execution still needs Derive credentials and careful rehearsal.
 - [x] 4. Dashboard and `/approve/:requestId` owner wallet page are implemented. The page uses Wagmi and inline styling; polish beyond the required handoff remains optional.
-- [ ] 5. MCP HTTP server/transport, bearer auth and deployment at `PUBLIC_BASE_URL`. The `compile_thesis` schema/handler is wired, but there is no hosted transport yet.
+- [x] 5. Stateless MCP HTTP transport and bearer auth are implemented locally; mock tool flow passes. Hosting configuration and deployment at `PUBLIC_BASE_URL` remain open.
 - [x] 6. Real read-only quote integration and mock-mode integration tests are in place. Authenticated live order execution remains blocked on credentials.
 - [ ] 7. README and demo script are updated. Video script, Devpost text and Grok chat export remain.
 - [ ] 8. Extra after Thu 2 PM: Telegram alerts.
@@ -48,7 +48,7 @@ Lane B's venues pass live smoke tests on Derive testnet and the Gemini sandbox (
   - links to both smoke evidence files
 - [x] C7. **Price labels.** Derive's testnet BTC index (about 62,500) differs from Gemini's sandbox BTC price. Show each with its source badge.
 - [x] C8. **Housekeeping.** Delete `apps/web/tsconfig.tsbuildinfo` and add `*.tsbuildinfo` to `.gitignore`. It changes on every typecheck and causes merge conflicts.
-- [ ] C9. **Deploy.** First implement an MCP HTTP transport, then configure a hosting project with `PUBLIC_BASE_URL` and `MCP_BEARER_TOKEN`, deploy API + MCP + web, and tell the team to add the connector in Grok.
+- [ ] C9. **Deploy.** Configure a hosting project with `PUBLIC_BASE_URL` and `MCP_BEARER_TOKEN`, deploy API + MCP + web, and tell the team to add the connector in Grok. The HTTP transport and bearer auth are implemented and locally validated.
 - [ ] C10. **Rehearsal checks** (before each run-through):
   - `pnpm --filter @ttp/treasury precheck --strategy <strategyId>`: vault caps and balance
   - re-run `pnpm --filter @ttp/risk calibrate` once the perp is open: rescue band, with `--env-file` or `.env` loaded

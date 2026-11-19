@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@modelcontextprotocol/node": "^2.1.2",
     "@ttp/mcp": "workspace:*",
     "@ttp/risk": "workspace:*",
     "@ttp/shared": "workspace:*",

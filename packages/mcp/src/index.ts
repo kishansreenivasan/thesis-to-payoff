@@ -24,3 +24,6 @@ export const COMPILE_THESIS_TOOL = {
 export function handleCompileThesis(args: unknown) {
   return intentFromGrok(args);
 }
+
+export { createMcpServer } from "./server";
+export type { McpActions } from "./server";

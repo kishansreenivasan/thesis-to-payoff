@@ -16,13 +16,13 @@ Append new entries at the top. Format: DESIGN.md Section 14. Humans fill in "Dec
 
 ---
 
-## [Lane C] Hosted MCP transport and deployment not available (OPEN)
+## [Lane C] Hosted MCP deployment not available (OPEN)
 - When: 2026-11-19
 - Task: C9, host the API, web app and MCP connector
 - Expected: an MCP HTTP transport authenticated with a bearer token, reachable at `PUBLIC_BASE_URL`
-- Actual: `compile_thesis` schema/handler is implemented, but there is no MCP HTTP transport or hosting project configured. `PUBLIC_BASE_URL` and `MCP_BEARER_TOKEN` are not available locally.
+- Actual: stateless MCP HTTP transport and bearer auth are implemented and locally validated. No hosting project is configured; `PUBLIC_BASE_URL` is not available locally.
 - Evidence: `docs/agents/lane-c.md`; Lane C handoff merged in PR #23
-- Options I see: 1) create the hosted project and implement the transport there; 2) implement and validate the transport locally, then deploy when hosting is ready
+- Options I see: configure a hosting project and deploy the locally validated transport
 - Meanwhile: dashboard and API mock demo work locally; read-only live venue quotes were verified
 - Decision (filled by humans): pending hosting choice/setup
 

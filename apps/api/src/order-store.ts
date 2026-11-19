@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
-import type { Order, OrderRequest, PositionSnapshot, Quote, StrategyPlan } from "@ttp/shared";
+import { ActivityEvent, type Order, type OrderRequest, type PositionSnapshot, type Quote, type StrategyPlan } from "@ttp/shared";
 
 export function createOrderStore(path = process.env.DATABASE_PATH ?? "./data/ttp.sqlite") {
   const cwd = process.cwd();
@@ -32,6 +32,16 @@ export function createOrderStore(path = process.env.DATABASE_PATH ?? "./data/ttp
       updated_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS orders_strategy_id_idx ON orders(strategy_id);
+    CREATE TABLE IF NOT EXISTS events (
+      seq INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT NOT NULL,
+      position_id TEXT,
+      type TEXT NOT NULL,
+      reason_code TEXT,
+      details_json TEXT NOT NULL,
+      source TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS events_position_seq_idx ON events(position_id, seq);
   `);
 
   const strategy = db.prepare("SELECT * FROM strategies WHERE strategy_id = ?");
@@ -64,6 +74,32 @@ export function createOrderStore(path = process.env.DATABASE_PATH ?? "./data/ttp
     getOrder(clientOrderId: string): { request: OrderRequest; order: Order | null; state: string; venueOrderId: string | null } | null {
       const row = db.prepare("SELECT * FROM orders WHERE client_order_id=?").get(clientOrderId) as { request_json: string; order_json: string | null; state: string; venue_order_id: string | null } | undefined;
       return row ? { request: JSON.parse(row.request_json) as OrderRequest, order: row.order_json ? JSON.parse(row.order_json) as Order : null, state: row.state, venueOrderId: row.venue_order_id } : null;
+    },
+    appendEvent(event: Omit<import("@ttp/shared").ActivityEvent, "seq">) {
+      const result = db.prepare(`INSERT INTO events (timestamp, position_id, type, reason_code, details_json, source)
+        VALUES (@timestamp, @positionId, @type, @reasonCode, @details, @source)`).run({
+        timestamp: event.timestamp,
+        positionId: event.positionId,
+        type: event.type,
+        reasonCode: event.reasonCode,
+        details: JSON.stringify(event.details),
+        source: event.source,
+      });
+      return ActivityEvent.parse({ ...event, seq: Number(result.lastInsertRowid) });
+    },
+    getEvents(positionId: string, after = 0) {
+      const rows = db.prepare(`SELECT seq, timestamp, position_id, type, reason_code, details_json, source
+        FROM events WHERE position_id=? AND seq>? ORDER BY seq`).all(positionId, after) as Array<{
+        seq: number; timestamp: string; position_id: string | null; type: string; reason_code: string | null; details_json: string; source: string;
+      }>;
+      return rows.map((row) => ActivityEvent.parse({
+        seq: row.seq, timestamp: row.timestamp, positionId: row.position_id, type: row.type,
+        reasonCode: row.reason_code, details: JSON.parse(row.details_json), source: row.source,
+      }));
+    },
+    listPositions() {
+      const rows = db.prepare("SELECT strategy_id, position_json FROM strategies WHERE position_json IS NOT NULL").all() as Array<{ strategy_id: string; position_json: string }>;
+      return rows.map((row) => ({ strategyId: row.strategy_id, position: JSON.parse(row.position_json) as PositionSnapshot }));
     },
     close() { db.close(); },
   };
