@@ -10,9 +10,12 @@
   },
   "dependencies": {
     "@ttp/shared": "workspace:*",
+    "@ttp/treasury": "workspace:*",
     "next": "^15.0.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "viem": "^2.58.0",
+    "wagmi": "^2.12.25"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
