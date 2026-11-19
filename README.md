@@ -8,7 +8,7 @@ Type a market view in plain English. The agent builds a small multi-leg position
 
 **Agents and contributors: start at [AGENTS.md](AGENTS.md).** Full spec: [DESIGN.md](DESIGN.md). Human to-dos: [docs/HUMAN-TODO.md](docs/HUMAN-TODO.md).
 
-Current lane progress and blockers are tracked in [STATUS.md](STATUS.md). Lane A/B code and Lane C handoff tasks C1-C8 are merged into `main`; the remaining work is hosted MCP transport/deployment and a funded, authenticated testnet rehearsal.
+Current lane progress and blockers are tracked in [STATUS.md](STATUS.md). Lane A/B code and Lane C handoff tasks C1-C8 are merged into `main`; remaining Lane C work includes order coordination, the monitoring/event loop, hosted MCP transport/deployment and a funded, authenticated testnet rehearsal.
 
 ## Quick start
 
