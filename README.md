@@ -126,10 +126,12 @@ Grok Bot is the conversational front end. It connects to our hosted MCP server (
 | Command | What |
 |---|---|
 | `pnpm demo:mock` | Full flow against mocks, in-process |
-| `pnpm demo:reset` | Clears the orchestrator's demo state and starts a new client-order-id run (DEMO_MODE only) |
+| `pnpm demo:reset [--flatten]` | Clears the orchestrator's demo state and starts a new client-order-id run (DEMO_MODE only); `--flatten` first closes Derive positions with reduce-only IOC orders |
 | `pnpm demo:open [--evidence evidence/x.json]` | Quotes, approves and executes the demo thesis against the running API (`DEMO_BASE_URL`, else `PUBLIC_BASE_URL`, else `localhost:4000`), printing venue order ids |
 | `pnpm --filter @ttp/treasury precheck --strategy <id>` | Vault caps, balance and agent gas; prints owner commands if short |
 | `cd packages/risk && VENUES_MODE=real npx tsx --env-file=../../.env scripts/calibrate.ts` | Rescue-band check on the real perp subaccount |
+
+Execution notes from the live rehearsal: the perp entry may pay up to 0.5% over the quoted ask, and rescue/flatten orders are IOC and may sell up to 1% through the bid (thin testnet books). Rescue sizes round up to Derive's 0.01 BTC minimum and 0.0001 step, never past the position.
 
 With live venues, the dashboard's demo controls need the operator token (the MCP bearer token), entered once under "Operator token" and kept only in that browser.
 

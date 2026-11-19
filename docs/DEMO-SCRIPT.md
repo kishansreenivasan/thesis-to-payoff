@@ -5,8 +5,10 @@ computed live, about $35 to $80).
 
 ## T-30 min: checks
 
+Run the scripts with `DEMO_BASE_URL=https://<domain>` (or `PUBLIC_BASE_URL` in `.env`) so they drive the hosted server the dashboard shows.
+
 1. `curl -s $PUBLIC_BASE_URL/api/health` shows the expected modes and `"demoMode":true`.
-2. `pnpm demo:reset` (clears demo state, new client-order-id run).
+2. `pnpm demo:reset --flatten` (closes the Derive call and perp with reduce-only IOC orders, clears demo state, starts a new client-order-id run). Wait about 30 s; Derive reads lag.
 3. `cd packages/risk && VENUES_MODE=real npx tsx --env-file=../../.env scripts/calibrate.ts`: the projected ratio after -15% must be in [1.2, 1.5). If not, a human moves the printed amount of test USDC in the Derive perp subaccount.
 4. Open the dashboard, expand "Operator token", paste the MCP bearer token, Save.
 5. Grok: the connector is listed and `position_status` answers.

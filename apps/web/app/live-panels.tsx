@@ -62,6 +62,11 @@ export function LivePanels() {
   const doReset = () => run("Reset", async () => { await api("/api/demo/reset", { method: "POST" }); setShock(null); setEvents([]); });
 
   const margin = position?.margins.find((m) => m.account === "perp") ?? position?.margins[0];
+  // The latest risk decision in the log (it may come from a follow-up after the owner declines).
+  const lastDecision = [...events].reverse().find((e) => e.type === "RISK_DECISION");
+  const latestShock: ShockResult | null = lastDecision && typeof lastDecision.details.projectedRatio === "string"
+    ? { projectedRatio: lastDecision.details.projectedRatio, projectedSource: String(lastDecision.details.projectedSource ?? "SIMULATED"), decision: { action: String(lastDecision.details.action ?? ""), explanation: String(lastDecision.details.explanation ?? ""), nextState: String(lastDecision.details.nextState ?? "") } }
+    : shock;
   const live = health?.modes.venues === "real";
 
   return <>
@@ -85,7 +90,7 @@ export function LivePanels() {
       <h2>Venues and margin</h2>
       {!position ? <p>No position open yet. Run <code>pnpm demo:open</code>, or build, approve and execute a plan.</p> : <>
         <p><b>{position.positionId}</b> · state {position.state} · risk {position.riskState}</p>
-        {margin && <MarginGauge margin={margin} shock={shock} />}
+        {margin && <MarginGauge margin={margin} shock={latestShock} />}
         <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%", fontSize: 14 }}>
           <thead><tr>{["Leg", "Venue", "Instrument", "Side", "Qty", "Filled", "Avg price", "State", "Venue order id", "Source"].map((h) => <th key={h} style={th}>{h}</th>)}</tr></thead>
           <tbody>{position.orders.map((o) => <tr key={o.clientOrderId}>

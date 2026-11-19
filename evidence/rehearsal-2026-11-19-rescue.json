@@ -1,0 +1,567 @@
+{
+  "capturedAtUtc": "2026-11-19T23:54:04.725225Z",
+  "what": "Real-testnet rehearsal of DESIGN.md Section 16 steps 5-9 against a local API in full real mode (VENUES/STRATEGY/TREASURY/RISK=real, DEMO_MODE=true). No secrets in this file.",
+  "notes": [
+    "First -15% shock: release 0xbd1c6201... reverted onchain, then the Arc RPC returned HTTP 429 while polling the receipt; fixed with viem retry/backoff and slower vault-event polling.",
+    "Second pass: revert, request 0x40625f98..., MCP position_status, decline; the reduce-only order was refused by Derive (amount step 0.0001 / min 0.01) - fixed by rounding the rescue size.",
+    "IOC at exactly the bid found no liquidity (Derive 11009) - rescue now sells up to 1% through the bid.",
+    "Final pass below: revert -> request -> position_status -> decline -> reduce-only fill on Derive testnet."
+  ],
+  "shock": {
+    "margin": {
+      "account": "perp",
+      "equityUsd": "229.86",
+      "maintenanceMarginUsd": "53.19",
+      "initialMarginUsd": "70.21",
+      "marginRatio": "4.3214",
+      "perpSizeBtc": "0.0172",
+      "indexPriceUsd": "61851.00",
+      "source": "TESTNET",
+      "timestamp": "2026-11-19T23:52:48.320Z"
+    },
+    "projectedRatio": "1.3214",
+    "projectedSource": "SIMULATED",
+    "decision": {
+      "projectedRatio": "1.3214",
+      "projectedSource": "SIMULATED",
+      "nextState": "FUNDING_ELIGIBLE",
+      "action": "REQUEST_APPROVAL",
+      "topUpUsdc6": "36095580",
+      "reduceQtyBtc": null,
+      "reasonCode": "TopUpExceedsLimits",
+      "explanation": "Projected margin ratio 1.32 is below 1.5 and the $36.10 top-up exceeds the vault's per-transaction or daily limit; requesting owner approval."
+    },
+    "transferRequest": {
+      "requestId": "0x0c61a01d63eece9395c621abe3f72a1ab20ce6459234e37b045e157a9e8a219c",
+      "strategyId": "strat_63491dbeab91",
+      "venue": "DERIVE",
+      "amountUsdc6": "36095580",
+      "destination": "0x47D9A12bBC0c9EA77D2f9202b256e01A4eF9e618",
+      "expiresAtUtc": "2026-11-19T23:54:49.000Z",
+      "state": "OWNER_APPROVAL_NEEDED",
+      "reasonCode": null,
+      "txHash": "0xbf80173320163e6e79668ec6889c845ceefaeb0f768370c99fac0c23e1d00e9f",
+      "source": "ONCHAIN_TESTNET"
+    },
+    "reduceOrder": null
+  },
+  "mcpPositionStatus": {
+    "position": {
+      "positionId": "pos_strat_63491dbeab91",
+      "strategyId": "strat_63491dbeab91",
+      "state": "OPEN",
+      "riskState": "FUNDING_ELIGIBLE",
+      "orders": [
+        {
+          "clientOrderId": "strat_63491dbeab91-1-r2-L3b",
+          "strategyId": "strat_63491dbeab91",
+          "legId": "L3b",
+          "venue": "GEMINI",
+          "account": "sandbox",
+          "instrumentId": "GEMI-BTC2611302200-HI67500:NO",
+          "side": "BUY",
+          "quantity": "42",
+          "limitPrice": "0.68",
+          "reduceOnly": false,
+          "venueOrderId": "145853902324104552",
+          "filledQuantity": "42",
+          "avgPrice": "0.68",
+          "state": "FILLED",
+          "source": "SANDBOX",
+          "updatedAt": "2026-11-19T23:48:59.701Z"
+        },
+        {
+          "clientOrderId": "strat_63491dbeab91-1-r2-L1",
+          "strategyId": "strat_63491dbeab91",
+          "legId": "L1",
+          "venue": "DERIVE",
+          "account": "main",
+          "instrumentId": "BTC-20261225-60000-C",
+          "side": "BUY",
+          "quantity": "0.04",
+          "limitPrice": "4651.00",
+          "reduceOnly": false,
+          "venueOrderId": "26543b2f-5c29-4cc8-b4c9-2e62ae003ba1",
+          "filledQuantity": "0.04",
+          "avgPrice": "4651.00",
+          "state": "FILLED",
+          "source": "TESTNET",
+          "updatedAt": "2026-11-19T23:49:00.168Z"
+        },
+        {
+          "clientOrderId": "strat_63491dbeab91-1-r2-L2",
+          "strategyId": "strat_63491dbeab91",
+          "legId": "L2",
+          "venue": "DERIVE",
+          "account": "perp",
+          "instrumentId": "BTC-PERP",
+          "side": "BUY",
+          "quantity": "0.0172",
+          "limitPrice": "61847.20",
+          "reduceOnly": false,
+          "venueOrderId": "5d4c9881-f106-4946-a039-a30dd3648cb0",
+          "filledQuantity": "0.0172",
+          "avgPrice": "61846.30",
+          "state": "FILLED",
+          "source": "TESTNET",
+          "updatedAt": "2026-11-19T23:49:00.639Z"
+        }
+      ],
+      "positions": [
+        {
+          "venue": "DERIVE",
+          "account": "main",
+          "instrumentId": "BTC-20261225-60000-C",
+          "quantity": "0.04",
+          "avgPrice": "4682.05",
+          "markPrice": "4631.69",
+          "unrealizedPnlUsd": "-2.01",
+          "source": "TESTNET",
+          "timestamp": "2026-11-19T23:49:00.553Z"
+        },
+        {
+          "venue": "DERIVE",
+          "account": "perp",
+          "instrumentId": "BTC-PERP",
+          "quantity": "0.0172",
+          "avgPrice": "61865.43",
+          "markPrice": "61851.23",
+          "unrealizedPnlUsd": "-0.24",
+          "source": "TESTNET",
+          "timestamp": "2026-11-19T23:49:00.499Z"
+        }
+      ],
+      "margins": [
+        {
+          "account": "perp",
+          "equityUsd": "229.86",
+          "maintenanceMarginUsd": "53.19",
+          "initialMarginUsd": "70.21",
+          "marginRatio": "4.3214",
+          "perpSizeBtc": "0.0172",
+          "indexPriceUsd": "61851.00",
+          "source": "TESTNET",
+          "timestamp": "2026-11-19T23:52:48.320Z"
+        }
+      ],
+      "estimatedPnlUsd": "0",
+      "updatedAt": "2026-11-19T23:52:51.726Z"
+    },
+    "approvalRequests": [
+      {
+        "requestId": "0x0c61a01d63eece9395c621abe3f72a1ab20ce6459234e37b045e157a9e8a219c",
+        "strategyId": "strat_63491dbeab91",
+        "venue": "DERIVE",
+        "amountUsdc6": "36095580",
+        "destination": "0x47D9A12bBC0c9EA77D2f9202b256e01A4eF9e618",
+        "expiresAtUtc": "2026-11-19T23:54:49.000Z",
+        "state": "OWNER_APPROVAL_NEEDED",
+        "reasonCode": null,
+        "txHash": "0xbf80173320163e6e79668ec6889c845ceefaeb0f768370c99fac0c23e1d00e9f",
+        "source": "ONCHAIN_TESTNET",
+        "approvalUrl": "/approve/0x0c61a01d63eece9395c621abe3f72a1ab20ce6459234e37b045e157a9e8a219c"
+      }
+    ]
+  },
+  "declineWithFollowUp": {
+    "requestId": "0x0c61a01d63eece9395c621abe3f72a1ab20ce6459234e37b045e157a9e8a219c",
+    "strategyId": "strat_63491dbeab91",
+    "venue": "DERIVE",
+    "amountUsdc6": "36095580",
+    "destination": "0x47D9A12bBC0c9EA77D2f9202b256e01A4eF9e618",
+    "expiresAtUtc": "2026-11-19T23:54:49.000Z",
+    "state": "REJECTED",
+    "reasonCode": "Canceled",
+    "txHash": null,
+    "source": "ONCHAIN_TESTNET",
+    "followUp": {
+      "margin": {
+        "account": "perp",
+        "equityUsd": "230.03",
+        "maintenanceMarginUsd": "53.20",
+        "initialMarginUsd": "70.22",
+        "marginRatio": "4.3239",
+        "perpSizeBtc": "0.0172",
+        "indexPriceUsd": "61852.70",
+        "source": "TESTNET",
+        "timestamp": "2026-11-19T23:53:03.382Z"
+      },
+      "projectedRatio": "1.3242",
+      "projectedSource": "SIMULATED",
+      "decision": {
+        "projectedRatio": "1.3242",
+        "projectedSource": "SIMULATED",
+        "nextState": "DELEVERAGE_REQUIRED",
+        "action": "REDUCE_PERP",
+        "topUpUsdc6": null,
+        "reduceQtyBtc": "0.005811",
+        "reasonCode": "RequestDeclinedOrExpired",
+        "explanation": "The prior release request ended in state REJECTED; reducing the perp instead of waiting any longer."
+      },
+      "transferRequest": null,
+      "reduceOrder": {
+        "clientOrderId": "strat_63491dbeab91-rescue-59837746",
+        "strategyId": "strat_63491dbeab91",
+        "legId": "L2",
+        "venue": "DERIVE",
+        "account": "perp",
+        "instrumentId": "BTC-PERP",
+        "side": "SELL",
+        "quantity": "0.0100",
+        "limitPrice": "61230.2",
+        "reduceOnly": true,
+        "venueOrderId": "a26d1bd0-1366-4edd-9fd5-4fd0744a5372",
+        "filledQuantity": "0.01",
+        "avgPrice": "61850.70",
+        "state": "FILLED",
+        "source": "TESTNET",
+        "updatedAt": "2026-11-19T23:53:03.506Z"
+      }
+    }
+  },
+  "activityLog": [
+    {
+      "seq": 3,
+      "timestamp": "2026-11-19T23:48:59.048Z",
+      "positionId": "pos_strat_63491dbeab91",
+      "type": "PLAN_QUOTED",
+      "reasonCode": null,
+      "details": {
+        "strategyId": "strat_63491dbeab91",
+        "versionHash": "4a7e89c0a2333f6b6ae3479099a776516a1ed927d56f7cc9cfa8e3801d5cf85a",
+        "sources": [
+          "TESTNET",
+          "LIVE_MAINNET_READONLY",
+          "SANDBOX"
+        ]
+      },
+      "source": "SIMULATED"
+    },
+    {
+      "seq": 4,
+      "timestamp": "2026-11-19T23:48:59.054Z",
+      "positionId": "pos_strat_63491dbeab91",
+      "type": "STRATEGY_APPROVED",
+      "reasonCode": null,
+      "details": {
+        "strategyId": "strat_63491dbeab91",
+        "versionHash": "4a7e89c0a2333f6b6ae3479099a776516a1ed927d56f7cc9cfa8e3801d5cf85a"
+      },
+      "source": "SIMULATED"
+    },
+    {
+      "seq": 5,
+      "timestamp": "2026-11-19T23:48:59.701Z",
+      "positionId": "pos_strat_63491dbeab91",
+      "type": "ORDER_UPDATED",
+      "reasonCode": "FILLED",
+      "details": {
+        "clientOrderId": "strat_63491dbeab91-1-r2-L3b",
+        "strategyId": "strat_63491dbeab91",
+        "legId": "L3b",
+        "venue": "GEMINI",
+        "account": "sandbox",
+        "instrumentId": "GEMI-BTC2611302200-HI67500:NO",
+        "side": "BUY",
+        "quantity": "42",
+        "limitPrice": "0.68",
+        "reduceOnly": false,
+        "venueOrderId": "145853902324104552",
+        "filledQuantity": "42",
+        "avgPrice": "0.68",
+        "state": "FILLED",
+        "source": "SANDBOX",
+        "updatedAt": "2026-11-19T23:48:59.701Z"
+      },
+      "source": "SANDBOX"
+    },
+    {
+      "seq": 6,
+      "timestamp": "2026-11-19T23:49:00.168Z",
+      "positionId": "pos_strat_63491dbeab91",
+      "type": "ORDER_UPDATED",
+      "reasonCode": "FILLED",
+      "details": {
+        "clientOrderId": "strat_63491dbeab91-1-r2-L1",
+        "strategyId": "strat_63491dbeab91",
+        "legId": "L1",
+        "venue": "DERIVE",
+        "account": "main",
+        "instrumentId": "BTC-20261225-60000-C",
+        "side": "BUY",
+        "quantity": "0.04",
+        "limitPrice": "4651.00",
+        "reduceOnly": false,
+        "venueOrderId": "26543b2f-5c29-4cc8-b4c9-2e62ae003ba1",
+        "filledQuantity": "0.04",
+        "avgPrice": "4651.00",
+        "state": "FILLED",
+        "source": "TESTNET",
+        "updatedAt": "2026-11-19T23:49:00.168Z"
+      },
+      "source": "TESTNET"
+    },
+    {
+      "seq": 7,
+      "timestamp": "2026-11-19T23:49:00.639Z",
+      "positionId": "pos_strat_63491dbeab91",
+      "type": "ORDER_UPDATED",
+      "reasonCode": "FILLED",
+      "details": {
+        "clientOrderId": "strat_63491dbeab91-1-r2-L2",
+        "strategyId": "strat_63491dbeab91",
+        "legId": "L2",
+        "venue": "DERIVE",
+        "account": "perp",
+        "instrumentId": "BTC-PERP",
+        "side": "BUY",
+        "quantity": "0.0172",
+        "limitPrice": "61847.20",
+        "reduceOnly": false,
+        "venueOrderId": "5d4c9881-f106-4946-a039-a30dd3648cb0",
+        "filledQuantity": "0.0172",
+        "avgPrice": "61846.30",
+        "state": "FILLED",
+        "source": "TESTNET",
+        "updatedAt": "2026-11-19T23:49:00.639Z"
+      },
+      "source": "TESTNET"
+    },
+    {
+      "seq": 8,
+      "timestamp": "2026-11-19T23:49:00.553Z",
+      "positionId": "pos_strat_63491dbeab91",
+      "type": "POSITION_UPDATED",
+      "reasonCode": "OPEN",
+      "details": {
+        "strategyId": "strat_63491dbeab91",
+        "state": "OPEN",
+        "orders": 3
+      },
+      "source": "TESTNET"
+    },
+    {
+      "seq": 9,
+      "timestamp": "2026-11-19T23:50:06.640Z",
+      "positionId": "pos_strat_63491dbeab91",
+      "type": "TRANSFER_REQUEST_UPDATED",
+      "reasonCode": "OWNER_APPROVAL_NEEDED",
+      "details": {
+        "requestId": "0x40625f98fe70d24f061e055874461fba423fe8182dd831096bbd68c914590c97",
+        "strategyId": "strat_63491dbeab91",
+        "venue": "DERIVE",
+        "amountUsdc6": "35857758",
+        "destination": "0x47D9A12bBC0c9EA77D2f9202b256e01A4eF9e618",
+        "expiresAtUtc": "2026-11-19T23:52:04.000Z",
+        "state": "OWNER_APPROVAL_NEEDED",
+        "reasonCode": null,
+        "txHash": "0x03e5e44ddf1040b7ada789dc24f2169f5eda8503e84bf5ca55bfea33aed968f4",
+        "source": "ONCHAIN_TESTNET"
+      },
+      "source": "ONCHAIN_TESTNET"
+    },
+    {
+      "seq": 10,
+      "timestamp": "2026-11-19T23:50:06.641Z",
+      "positionId": "pos_strat_63491dbeab91",
+      "type": "RISK_DECISION",
+      "reasonCode": "TopUpExceedsLimits",
+      "details": {
+        "projectedRatio": "1.3261",
+        "projectedSource": "SIMULATED",
+        "nextState": "FUNDING_ELIGIBLE",
+        "action": "REQUEST_APPROVAL",
+        "topUpUsdc6": "35857758",
+        "reduceQtyBtc": null,
+        "reasonCode": "TopUpExceedsLimits",
+        "explanation": "Projected margin ratio 1.33 is below 1.5 and the $35.86 top-up exceeds the vault's per-transaction or daily limit; requesting owner approval."
+      },
+      "source": "SIMULATED"
+    },
+    {
+      "seq": 11,
+      "timestamp": "2026-11-19T23:50:05.000Z",
+      "positionId": "pos_strat_63491dbeab91",
+      "type": "ReleaseRequested",
+      "reasonCode": null,
+      "details": {
+        "requestId": "0x40625f98fe70d24f061e055874461fba423fe8182dd831096bbd68c914590c97",
+        "destination": "0x47D9A12bBC0c9EA77D2f9202b256e01A4eF9e618",
+        "strategyId": "strat_63491dbeab91",
+        "amount6": "35857758",
+        "expiresAt": "1795132324",
+        "transactionHash": "0x03e5e44ddf1040b7ada789dc24f2169f5eda8503e84bf5ca55bfea33aed968f4"
+      },
+      "source": "ONCHAIN_TESTNET"
+    },
+    {
+      "seq": 12,
+      "timestamp": "2026-11-19T23:50:19.615Z",
+      "positionId": "pos_strat_63491dbeab91",
+      "type": "TRANSFER_REQUEST_UPDATED",
+      "reasonCode": "REJECTED",
+      "details": {
+        "requestId": "0x40625f98fe70d24f061e055874461fba423fe8182dd831096bbd68c914590c97",
+        "strategyId": "strat_63491dbeab91",
+        "venue": "DERIVE",
+        "amountUsdc6": "35857758",
+        "destination": "0x47D9A12bBC0c9EA77D2f9202b256e01A4eF9e618",
+        "expiresAtUtc": "2026-11-19T23:52:04.000Z",
+        "state": "REJECTED",
+        "reasonCode": "Canceled",
+        "txHash": null,
+        "source": "ONCHAIN_TESTNET"
+      },
+      "source": "ONCHAIN_TESTNET"
+    },
+    {
+      "seq": 14,
+      "timestamp": "2026-11-19T23:52:49.058Z",
+      "positionId": "pos_strat_63491dbeab91",
+      "type": "RELEASE_REVERTED",
+      "reasonCode": "ExceedsPerTxCap",
+      "details": {
+        "requestId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "strategyId": "strat_63491dbeab91",
+        "venue": "DERIVE",
+        "amountUsdc6": "36095580",
+        "destination": "0x47D9A12bBC0c9EA77D2f9202b256e01A4eF9e618",
+        "expiresAtUtc": null,
+        "state": "REJECTED",
+        "reasonCode": "ExceedsPerTxCap",
+        "txHash": "0x9d11b90cfc210b7a3d16fd7fe21cdc3954ea4f4c135887cd4602743b142ca42d",
+        "source": "ONCHAIN_TESTNET",
+        "explanation": "The vault rejected an agent release of 36.10 USDC onchain; filing an owner approval request."
+      },
+      "source": "ONCHAIN_TESTNET"
+    },
+    {
+      "seq": 15,
+      "timestamp": "2026-11-19T23:52:51.725Z",
+      "positionId": "pos_strat_63491dbeab91",
+      "type": "TRANSFER_REQUEST_UPDATED",
+      "reasonCode": "OWNER_APPROVAL_NEEDED",
+      "details": {
+        "requestId": "0x0c61a01d63eece9395c621abe3f72a1ab20ce6459234e37b045e157a9e8a219c",
+        "strategyId": "strat_63491dbeab91",
+        "venue": "DERIVE",
+        "amountUsdc6": "36095580",
+        "destination": "0x47D9A12bBC0c9EA77D2f9202b256e01A4eF9e618",
+        "expiresAtUtc": "2026-11-19T23:54:49.000Z",
+        "state": "OWNER_APPROVAL_NEEDED",
+        "reasonCode": null,
+        "txHash": "0xbf80173320163e6e79668ec6889c845ceefaeb0f768370c99fac0c23e1d00e9f",
+        "source": "ONCHAIN_TESTNET"
+      },
+      "source": "ONCHAIN_TESTNET"
+    },
+    {
+      "seq": 16,
+      "timestamp": "2026-11-19T23:52:51.726Z",
+      "positionId": "pos_strat_63491dbeab91",
+      "type": "RISK_DECISION",
+      "reasonCode": "TopUpExceedsLimits",
+      "details": {
+        "projectedRatio": "1.3214",
+        "projectedSource": "SIMULATED",
+        "nextState": "FUNDING_ELIGIBLE",
+        "action": "REQUEST_APPROVAL",
+        "topUpUsdc6": "36095580",
+        "reduceQtyBtc": null,
+        "reasonCode": "TopUpExceedsLimits",
+        "explanation": "Projected margin ratio 1.32 is below 1.5 and the $36.10 top-up exceeds the vault's per-transaction or daily limit; requesting owner approval."
+      },
+      "source": "SIMULATED"
+    },
+    {
+      "seq": 17,
+      "timestamp": "2026-11-19T23:53:02.451Z",
+      "positionId": "pos_strat_63491dbeab91",
+      "type": "TRANSFER_REQUEST_UPDATED",
+      "reasonCode": "REJECTED",
+      "details": {
+        "requestId": "0x0c61a01d63eece9395c621abe3f72a1ab20ce6459234e37b045e157a9e8a219c",
+        "strategyId": "strat_63491dbeab91",
+        "venue": "DERIVE",
+        "amountUsdc6": "36095580",
+        "destination": "0x47D9A12bBC0c9EA77D2f9202b256e01A4eF9e618",
+        "expiresAtUtc": "2026-11-19T23:54:49.000Z",
+        "state": "REJECTED",
+        "reasonCode": "Canceled",
+        "txHash": null,
+        "source": "ONCHAIN_TESTNET"
+      },
+      "source": "ONCHAIN_TESTNET"
+    },
+    {
+      "seq": 18,
+      "timestamp": "2026-11-19T23:52:49.000Z",
+      "positionId": "pos_strat_63491dbeab91",
+      "type": "ReleaseRequested",
+      "reasonCode": null,
+      "details": {
+        "requestId": "0x0c61a01d63eece9395c621abe3f72a1ab20ce6459234e37b045e157a9e8a219c",
+        "destination": "0x47D9A12bBC0c9EA77D2f9202b256e01A4eF9e618",
+        "strategyId": "strat_63491dbeab91",
+        "amount6": "36095580",
+        "expiresAt": "1795132489",
+        "transactionHash": "0xbf80173320163e6e79668ec6889c845ceefaeb0f768370c99fac0c23e1d00e9f"
+      },
+      "source": "ONCHAIN_TESTNET"
+    },
+    {
+      "seq": 19,
+      "timestamp": "2026-11-19T23:53:03.506Z",
+      "positionId": "pos_strat_63491dbeab91",
+      "type": "ORDER_UPDATED",
+      "reasonCode": "FILLED",
+      "details": {
+        "clientOrderId": "strat_63491dbeab91-rescue-59837746",
+        "strategyId": "strat_63491dbeab91",
+        "legId": "L2",
+        "venue": "DERIVE",
+        "account": "perp",
+        "instrumentId": "BTC-PERP",
+        "side": "SELL",
+        "quantity": "0.0100",
+        "limitPrice": "61230.2",
+        "reduceOnly": true,
+        "venueOrderId": "a26d1bd0-1366-4edd-9fd5-4fd0744a5372",
+        "filledQuantity": "0.01",
+        "avgPrice": "61850.70",
+        "state": "FILLED",
+        "source": "TESTNET",
+        "updatedAt": "2026-11-19T23:53:03.506Z"
+      },
+      "source": "TESTNET"
+    },
+    {
+      "seq": 20,
+      "timestamp": "2026-11-19T23:53:03.382Z",
+      "positionId": "pos_strat_63491dbeab91",
+      "type": "RISK_DECISION",
+      "reasonCode": "RequestDeclinedOrExpired",
+      "details": {
+        "projectedRatio": "1.3242",
+        "projectedSource": "SIMULATED",
+        "nextState": "DELEVERAGE_REQUIRED",
+        "action": "REDUCE_PERP",
+        "topUpUsdc6": null,
+        "reduceQtyBtc": "0.005811",
+        "reasonCode": "RequestDeclinedOrExpired",
+        "explanation": "The prior release request ended in state REJECTED; reducing the perp instead of waiting any longer."
+      },
+      "source": "SIMULATED"
+    }
+  ],
+  "calibrateAfter": [
+    "Rescue-band calibration  (VENUES_MODE=real, source TESTNET, READ ONLY)",
+    "  perp position      0.0072 BTC (BTC-PERP)",
+    "  index price        $61898.80",
+    "  equity (gross)     $229.96",
+    "  maintenance req.   $22.28   (gross = value - Derive's net maintenance_margin)",
+    "  current ratio      10.3214",
+    "  after -15% shock  loss $66.85 -> equity $163.11 -> projected ratio 7.3209  OUTSIDE rescue band [1.2, 1.5)",
+    "  band needs equity  $93.59 up to (not incl.) $100.27"
+  ]
+}
