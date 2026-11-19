@@ -21,7 +21,7 @@ Selected by `VENUES_MODE` and `STRATEGY_MODE` (`mock` default, `real`).
 - [x] 3. (Built from docs; confirm with smoke test.) Derive adapter (replaced Deribit 2026-11-18): instruments, book, account summary (main + perp), buy, sell with `reduce_only`, positions, cancel, index price.
 - [x] 4. (Passed live 2026-11-18: Derive 9/9, Gemini 8/8.) Smoke tests → `evidence/gemini-smoke.json`, `evidence/derive-smoke.json` (redacted).
 - [x] 5. Thesis gate (`intentFromGrok` for Grok's `compile_thesis` fields, offline `parseThesis` for dashboard text; no LLM API), `buildPlan`, `payoffGrid`, with unit tests.
-- [ ] 6. Daily: does Gemini sandbox list `FED261211`? Record in `STATUS.md`.
+- [ ] 6. Daily: does Gemini sandbox list `FED261211`? Record in `STATUS.md`. Rechecked 2026-11-19: event endpoint returned `Event not found` (HTTP 404); keep L3a as a live read-only mainnet quote with a simulated position.
 
 ## Start conditions
 
@@ -37,3 +37,7 @@ Tasks 1 and 5: now. Tasks 2 to 4: when Gemini keys and the Derive wallet values 
 - Testnet only: cross the spread to fill; cancel after 30 s and report `REJECTED` / `NO_FILL`.
 - Note in `CHANGES.md` which perp you used for L2 (linear USDC perp vs `BTC-PERPETUAL`).
 - No model output sets numbers. `buildPlan` is deterministic and respects the $500 budget table.
+
+## Current handoff (2026-11-19)
+
+Lane B's adapter and strategy changes are included in `main`; the remote `lane-b` branch is already an ancestor of `main`, so there is nothing to cherry-pick into Lane C. The last recorded smoke results are Derive 9/9 and Gemini 8/8 from 2026-11-18. Task 6 remains: recheck whether the Gemini sandbox lists `FED261211` and record the result in `STATUS.md`. Local authenticated Derive calls also need the missing credentials configured; public quote reads do not.

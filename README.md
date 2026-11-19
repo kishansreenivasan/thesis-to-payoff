@@ -8,6 +8,8 @@ Type a market view in plain English. The agent builds a small multi-leg position
 
 **Agents and contributors: start at [AGENTS.md](AGENTS.md).** Full spec: [DESIGN.md](DESIGN.md). Human to-dos: [docs/HUMAN-TODO.md](docs/HUMAN-TODO.md).
 
+Current lane progress and blockers are tracked in [STATUS.md](STATUS.md). Lane A/B code and Lane C handoff tasks C1-C8 are merged into `main`; the remaining work is hosted MCP transport/deployment and a funded, authenticated testnet rehearsal.
+
 ## Quick start
 
 ```bash
@@ -76,7 +78,7 @@ The risk engine projects margin under fixed shocks and demo thresholds. Projecte
 
 ## Grok integration
 
-Grok supplies the structured thesis fields through `compile_thesis`; the server validates them and deterministic strategy code selects instruments, prices and sizes. Grok cannot approve transfers or sign transactions. The owner approves from their own connected wallet.
+The `compile_thesis` input schema and handler are wired in `packages/mcp`; a hosted MCP HTTP transport is not implemented or deployed yet. When connected, Grok's structured thesis fields are validated by deterministic strategy code, which selects instruments, prices and sizes. Grok cannot approve transfers or sign transactions. The owner approves from their own connected wallet.
 
 ## Local development
 
