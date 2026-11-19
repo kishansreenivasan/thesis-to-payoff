@@ -1,5 +1,7 @@
 # Lane A README draft (for Lane C to paste into README.md)
 
+**Status:** incorporated into the root README on 2026-11-19; keep this file as the original Lane A handoff/reference.
+
 Sections below follow DESIGN.md Section 17. Wording follows Section 12: one treasury with onchain spending rules; Arc never funds a venue; simulated is never called real. Hashes and links are copied from `evidence/arc-*.json` and `contracts/deployments/arc-testnet.json`.
 
 ---

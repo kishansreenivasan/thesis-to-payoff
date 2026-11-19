@@ -1,6 +1,6 @@
 # Human to-do (things agents cannot do)
 
-Updated 2026-11-18. The full checklist with history is GitHub issue #1. Tick items there as you go.
+Updated 2026-11-19. The full checklist with history is GitHub issue #1. Lane A/B work and Lane C tasks C1-C8 are merged to `main` (Lane C PR #23).
 
 ## Done
 - [x] Gemini sandbox account, prediction terms accepted, API key in `.env` (smoke test 8/8)
@@ -9,10 +9,10 @@ Updated 2026-11-18. The full checklist with history is GitHub issue #1. Tick ite
 
 ## Next, in order
 
-0. **Finish local real-mode setup.** The project `.env` has Gemini and Arc credentials, but the current Derive fields are empty: `DERIVE_WALLET`, `DERIVE_SIGNER_PRIVATE_KEY`, `DERIVE_MAIN_SUBACCOUNT_ID`, `DERIVE_PERP_SUBACCOUNT_ID`. Real public quotes work; authenticated order and margin calls do not yet.
+0. **Finish local real-mode setup.** Derive authenticated credentials and subaccount IDs are not configured in the local `.env`. Set `DERIVE_WALLET`, `DERIVE_SIGNER_PRIVATE_KEY`, `DERIVE_MAIN_SUBACCOUNT_ID`, and `DERIVE_PERP_SUBACCOUNT_ID` using testnet-only values. Public quotes work; authenticated order and margin calls do not yet. Never share or commit the private key.
 
 1. **Fund the Arc vault with about 150 test USDC.** A read-only precheck on 2026-11-19 found 22 USDC in the vault (12 releasable above its reserve floor) and $100 needed for the rehearsal flow.
-   - **Why:** it holds about 22 USDC. The demo needs up to 100 USDC above its 10 USDC floor: the allowed 20 USDC release plus an approved request.
+   - **Why:** it held 22 USDC at the last read-only check, with 12 USDC above the 10 USDC reserve floor. The rehearsal needs up to 100 USDC available for releases, so funding about 150 USDC provides room for the reserve.
    - **Where:** vault `0x1e9B755C7caA3d1D007d70A7cF77E93cc6A65E07` on Arc testnet (chain 5042002). Explorer: https://explorer.testnet.arc.io/address/0x1e9B755C7caA3d1D007d70A7cF77E93cc6A65E07
    - **How:** get test USDC at https://faucet.circle.com (Arc testnet), then send about 150 from your Arc wallet to the vault address.
    - **Careful:** on Arc, test USDC is also the gas token, so leave some in the sending wallet.
@@ -23,9 +23,10 @@ Updated 2026-11-18. The full checklist with history is GitHub issue #1. Tick ite
    - Set `MCP_BEARER_TOKEN` to a long random string.
    - Add both to the host's settings and to `.env`.
 3. **Grok Bot.** Get access. When Lane C says the MCP server is live, add it in Grok as a custom connector (URL plus bearer token).
-4. **Tell the agents to pull `main`.**
-   - **Lane C:** "Do the hand-off tasks C1 to C10 in `docs/agents/lane-c.md`."
-   - **Lane A:** "Re-run `calibrate` once the perp is open."
+4. **Complete the remaining technical handoffs.**
+   - **Lane C:** implement and host the MCP HTTP transport, then deploy API + web + MCP after the hosting URL and bearer token are available.
+   - **Lane A:** run live `calibrate` after Derive credentials are configured and the perp is open.
+   - **Lane B:** check whether Gemini sandbox lists `FED261211`; record the result in `STATUS.md`.
 5. **Judging.** Confirm who attends in person on Sat Nov 21. No one there means no prize.
 
 ## Optional

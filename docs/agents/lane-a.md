@@ -25,9 +25,9 @@ Selected by `TREASURY_MODE` and `RISK_MODE` (`mock` default, `real`).
 
 ## Phase 2: protect the live demo (added 2026-11-18, in priority order)
 
-Tasks 1 to 6 are done. These keep the Section 16 demo working on real testnets.
+Tasks 1 to 6 are done and merged into `main`. Phase 2 implementation tasks 7 to 11 are also merged. The remaining work is live calibration and rehearsal after the human setup items are complete.
 
-- [x] 7. (built and tested on the venues mock; live check pending until `DERIVE_*` is set) **Calibrate the -15% rescue band against Derive.** L1 and L2 moved to Derive testnet (see CHANGES.md). The demo needs the projected ratio after a -15% shock to land in [1.2, 1.5), so the agent tries the vault, reverts and requests approval, instead of jumping straight to DELEVERAGE.
+- [x] 7. (script built and mock-tested; live calibration pending Derive credentials and an open perp) **Calibrate the -15% rescue band against Derive.** L1 and L2 moved to Derive testnet (see CHANGES.md). The demo needs the projected ratio after a -15% shock to land in [1.2, 1.5), so the agent tries the vault, reverts and requests approval, instead of jumping straight to DELEVERAGE.
   - **Rough numbers:** with the planned perp (`BTC-PERP`, about 0.0166 BTC, about $1,060 notional) and Derive's documented perp maintenance rate of 5% (mainnet value; testnet unconfirmed), maintenance is about $53 and a -15% shock loses about $159.
   - **Collateral:** $200 in the perp subaccount projects about 0.8 (too low). About $225 to $238 lands in band. Mid-band (1.35) is about $230.
   - **Build:** a script (for example `pnpm --filter @ttp/risk calibrate`) that reads the live perp margin and position through `@ttp/venues` (`getMargin("perp")`, `getPositions("DERIVE", "perp")`). It prints the current and projected ratio, and the test USDC to deposit or withdraw to hit 1.35. It must not move funds; a human deposits.
@@ -61,3 +61,7 @@ Phase 2: tasks 8 to 11 now. Task 7 builds against the venues mock now and is ver
 
 Chain 5042002 · RPC `https://rpc.testnet.arc.io` · USDC `0x3600000000000000000000000000000000000000` (6 decimals).
 Demo limits: per-tx 25 USDC, daily 50, reserve floor 10, strategy cap 150.
+
+## Current handoff (2026-11-19)
+
+All Lane A code is included in `main`. Before live calibration/rehearsal, the human needs to configure authenticated Derive credentials and ensure the perp is open, then replenish the Arc vault: the last read-only check found 22 USDC total, 12 USDC releasable above the reserve floor, while the rehearsal can require up to 100 USDC (funding roughly 150 USDC is the current recommendation).
