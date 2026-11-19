@@ -26,7 +26,7 @@ Do any follow-up work on a branch based on the latest `main`.
 - [x] 4. Dashboard and `/approve/:requestId` owner wallet page are implemented. The page uses Wagmi and inline styling; polish beyond the required handoff remains optional.
 - [x] 5. Stateless MCP HTTP transport and bearer auth are implemented locally; mock tool flow passes. Hosting configuration and deployment at `PUBLIC_BASE_URL` remain open.
 - [x] 6. Real read-only quote integration and mock-mode integration tests are in place. Authenticated live order execution remains blocked on credentials.
-- [ ] 7. README and demo script are updated. Video script, Devpost text and Grok chat export remain.
+- [x] 7. README, demo runbook and video script (`docs/DEMO-SCRIPT.md`), Devpost draft (`docs/DEVPOST.md`). Grok chat export remains (human, after the connector works).
 - [ ] 8. Extra after Thu 2 PM: Telegram alerts.
 
 ## Hand-offs from Lanes A and B (added 2026-11-18, in priority order)
@@ -48,7 +48,7 @@ Lane B's venues pass live smoke tests on Derive testnet and the Gemini sandbox (
   - links to both smoke evidence files
 - [x] C7. **Price labels.** Derive's testnet BTC index (about 62,500) differs from Gemini's sandbox BTC price. Show each with its source badge.
 - [x] C8. **Housekeeping.** Delete `apps/web/tsconfig.tsbuildinfo` and add `*.tsbuildinfo` to `.gitignore`. It changes on every typecheck and causes merge conflicts.
-- [ ] C9. **Deploy.** Configure a hosting project with `PUBLIC_BASE_URL` and `MCP_BEARER_TOKEN`, deploy API + MCP + web, and tell the team to add the connector in Grok. The HTTP transport and bearer auth are implemented and locally validated.
+- [ ] C9. **Deploy.** Config done (Dockerfile, railway.json, `apps/api/src/hosted.ts`); waiting on the Railway domain and variables. Configure a hosting project with `PUBLIC_BASE_URL` and `MCP_BEARER_TOKEN`, deploy API + MCP + web, and tell the team to add the connector in Grok. The HTTP transport and bearer auth are implemented and locally validated.
 - [ ] C10. **Rehearsal checks** (before each run-through):
   - `pnpm --filter @ttp/treasury precheck --strategy <strategyId>`: vault caps and balance
   - re-run `pnpm --filter @ttp/risk calibrate` once the perp is open: rescue band, with `--env-file` or `.env` loaded

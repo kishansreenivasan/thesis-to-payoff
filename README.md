@@ -8,7 +8,41 @@ Type a market view in plain English. The agent builds a small multi-leg position
 
 **Agents and contributors: start at [AGENTS.md](AGENTS.md).** Full spec: [DESIGN.md](DESIGN.md). Human to-dos: [docs/HUMAN-TODO.md](docs/HUMAN-TODO.md).
 
-Current lane progress and blockers are tracked in [STATUS.md](STATUS.md). Lane A/B code and Lane C handoff tasks C1-C8 are merged into `main`; remaining Lane C work includes order coordination, the monitoring/event loop, hosted MCP transport/deployment and a funded, authenticated testnet rehearsal.
+Current lane progress and blockers are tracked in [STATUS.md](STATUS.md). Demo runbook: [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md). Submission text: [docs/DEVPOST.md](docs/DEVPOST.md).
+
+## Architecture
+
+```
+Grok Bot ──MCP (HTTPS + bearer)──┐
+Dashboard (Next.js) ──REST/SSE───┤
+                                 ▼
+                 apps/api  (Fastify orchestrator, SQLite order/event log, 10 s monitor)
+        ┌───────────────┬──────────────┬──────────────────┬─────────────────┐
+  @ttp/strategy     @ttp/venues      @ttp/risk         @ttp/treasury
+  thesis gate,      Derive testnet   margin projection  Arc vault (viem):
+  instrument pick,  (L1 call, L2     and rescue         release / request /
+  sizing, payoff    perp), Gemini    decisions          cancel; owner signs
+                    sandbox + live                      approvals in browser
+                    mainnet quotes
+```
+
+- One process serves the REST API, the MCP endpoint (`POST /mcp`) and the dashboard at the same URL ([apps/api/src/hosted.ts](apps/api/src/hosted.ts), [Dockerfile](Dockerfile), [railway.json](railway.json)).
+- No LLM runs on the server. Grok extracts the thesis fields; `intentFromGrok` validates them and code picks instruments, prices, sizes and limits.
+
+## Economic design
+
+The fixed demo thesis is "Bullish BTC into December, worried the Fed hikes more than expected on Dec 11. Max risk $500."
+
+| Leg | Venue | Role | Real or simulated |
+|---|---|---|---|
+| L1 | Derive testnet, BTC call (Dec 2026, strike nearest at-the-money, picked at runtime) | Bullish upside with a capped premium | Real testnet order |
+| L2 | Derive testnet, `BTC-PERP` small long | Leveraged exposure; creates real margin pressure; exits at its stop | Real testnet order |
+| L3a | Gemini `GEMI-FED261211-HIKEGT25` YES | Hedge against a bigger-than-expected Fed hike | Live mainnet quote, position SIMULATED |
+| L3b | Gemini sandbox `BTC2611302200` NO | Binary downside hedge for the perp, sized to book liquidity | Real sandbox order |
+
+Budget: premium + perp stop + hedges stay inside the stated max risk; the planner refuses a plan that does not fit. The payoff grid shows P&L at Dec 11 across BTC prices, split by Fed outcome, with the max-loss line.
+
+**Margin rescue.** Every 10 s (or on a demo shock) the risk engine projects the perp margin ratio under the shock. Below 1.5 it asks the Arc vault for a top-up; a release over the vault's per-tx cap reverts onchain and becomes an owner approval request. If the owner declines (or the request expires, or simulated credit does not improve the real margin), the agent sends a real reduce-only order on the Derive perp. Below 1.2 it reduces straight away.
 
 ## Quick start
 
@@ -78,7 +112,26 @@ The risk engine projects margin under fixed shocks and demo thresholds. Projecte
 
 ## Grok integration
 
-The `compile_thesis` input schema and handler are wired in `packages/mcp`; a hosted MCP HTTP transport is not implemented or deployed yet. When connected, Grok's structured thesis fields are validated by deterministic strategy code, which selects instruments, prices and sizes. Grok cannot approve transfers or sign transactions. The owner approves from their own connected wallet.
+Grok Bot is the conversational front end. It connects to our hosted MCP server (`<PUBLIC_BASE_URL>/mcp`, bearer token) and calls `compile_thesis` with the fields it extracts from the user's text; deterministic code validates them and rejects anything unsupported, including a max risk the user did not state. Grok then calls `quote_payoff`, `approve_strategy`, `execute_strategy` and `position_status` (which returns open Arc approval requests with the owner link), but it cannot approve transfers or sign transactions: the owner approves from their own wallet on the approval page.
+
+## Hosting (Railway)
+
+- Builder: the repo [Dockerfile](Dockerfile) (pnpm monorepo, Node 22). Start: `pnpm --filter @ttp/api start:hosted`. Health check: `GET /api/health`.
+- Railway Variables: `MCP_BEARER_TOKEN`, `PUBLIC_BASE_URL` (the `https://…up.railway.app` domain), `DEMO_MODE=true`. For real mode add `VENUES_MODE=real`, `STRATEGY_MODE=real`, `TREASURY_MODE=real`, `RISK_MODE=real` and the testnet/sandbox keys from `.env.example`. The Arc owner key is never on the server.
+- MCP: `POST <PUBLIC_BASE_URL>/mcp` with `Authorization: Bearer <MCP_BEARER_TOKEN>` (stateless Streamable HTTP).
+- SQLite lives at `/app/data/ttp.sqlite`; it is reset on redeploy unless a Railway volume is mounted at `/app/data`.
+
+## Demo commands
+
+| Command | What |
+|---|---|
+| `pnpm demo:mock` | Full flow against mocks, in-process |
+| `pnpm demo:reset` | Clears the orchestrator's demo state and starts a new client-order-id run (DEMO_MODE only) |
+| `pnpm demo:open [--evidence evidence/x.json]` | Quotes, approves and executes the demo thesis against the running API (`DEMO_BASE_URL`, else `PUBLIC_BASE_URL`, else `localhost:4000`), printing venue order ids |
+| `pnpm --filter @ttp/treasury precheck --strategy <id>` | Vault caps, balance and agent gas; prints owner commands if short |
+| `cd packages/risk && VENUES_MODE=real npx tsx --env-file=../../.env scripts/calibrate.ts` | Rescue-band check on the real perp subaccount |
+
+With live venues, the dashboard's demo controls need the operator token (the MCP bearer token), entered once under "Operator token" and kept only in that browser.
 
 ## Local development
 
