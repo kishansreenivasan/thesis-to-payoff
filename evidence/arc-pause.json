@@ -1,0 +1,28 @@
+{
+  "description": "Owner pauses and unpauses the vault (DESIGN.md Section 7, pause/unpause). Pausing blocks releaseWithinLimits and executeApproved; it was unpaused before executeApproved ran for the request+approve+execute evidence.",
+  "contract": "ThesisTreasuryVault",
+  "vaultAddress": "0x1e9B755C7caA3d1D007d70A7cF77E93cc6A65E07",
+  "network": "arc-testnet",
+  "chainId": 5042002,
+  "steps": [
+    {
+      "step": "pause",
+      "caller": "0x7Da8b9753c9D9793fEB86047888463F47Ac85A01",
+      "callerRole": "OWNER_ROLE",
+      "transactionHash": "0x3072f14a5b8f41f9eed043ac2e1cee78610b38637935074e8379d560128f29df",
+      "status": "success"
+    },
+    {
+      "step": "unpause",
+      "caller": "0x7Da8b9753c9D9793fEB86047888463F47Ac85A01",
+      "callerRole": "OWNER_ROLE",
+      "transactionHash": "0xb9af89ce354465398b10b51a91e8bd1bc6fd0284f346034c2610e5208e6b719f",
+      "status": "success"
+    }
+  ],
+  "explorerUrls": {
+    "pause": "https://explorer.testnet.arc.io/tx/0x3072f14a5b8f41f9eed043ac2e1cee78610b38637935074e8379d560128f29df",
+    "unpause": "https://explorer.testnet.arc.io/tx/0xb9af89ce354465398b10b51a91e8bd1bc6fd0284f346034c2610e5208e6b719f"
+  },
+  "source": "ONCHAIN_TESTNET"
+}

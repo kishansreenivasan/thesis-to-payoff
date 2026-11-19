@@ -1,14 +1,11 @@
 // Real venue adapters (Lane B).
-// Done: public, keyless reads verified on 2026-11-17 against live endpoints
-//   - Deribit testnet: public/get_index_price, public/get_order_book
-//   - Gemini mainnet + sandbox: GET /v1/prediction-markets/events, /events/{ticker}, /v1/book/{symbol}
-// Not done: authenticated calls (orders, positions, margin). They need human setup items 1-3 and
-// must be verified against the docs before coding (DESIGN.md Section 6). They throw until then.
-import Decimal from "decimal.js";
+//   - Derive testnet (L1 call, L2 perp): derive.ts. Replaced Deribit on 2026-11-18 (BLOCKED.md).
+//   - Gemini mainnet (read-only) + sandbox (L3a quote, L3b order): public reads here, private in gemini.ts.
+// "DERIBIT" is accepted as an alias for "DERIVE" so callers written before the switch keep working.
 import type { GeminiEvent, Quote, Source, Venue, VenuesApi } from "@ttp/shared";
-import { DERIBIT_OPTION_FEE_BTC_PER_CONTRACT, DERIBIT_PERP_TAKER_FEE_RATE } from "./conventions";
+import { createDeriveAdapter, createDerivePublic } from "./derive";
+import { createGeminiAdapter } from "./gemini";
 
-export const DERIBIT_TESTNET = "https://test.deribit.com/api/v2";
 export const GEMINI_HOSTS = { mainnet: "https://api.gemini.com", sandbox: "https://api.sandbox.gemini.com" } as const;
 
 const TIMEOUT_MS = 10_000;
@@ -19,70 +16,17 @@ async function getJson<T>(url: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-// ---------- Deribit (public) ----------
+/** L1/L2 venue. "DERIBIT" is a compatibility alias for "DERIVE". */
+export const isDeriveVenue = (v: Venue) => v === "DERIVE" || v === "DERIBIT";
 
-type DeribitResp<T> = { result: T; testnet?: boolean };
-type DeribitBook = {
-  best_bid_price: number | null;
-  best_ask_price: number | null;
-  best_bid_amount: number;
-  best_ask_amount: number;
-  index_price: number;
-  timestamp: number;
+const unsupported = (venue: string): never => {
+  throw new Error(`venues.real: unsupported venue ${venue}`);
 };
-
-const isDeribitOption = (id: string) => /^BTC-\d{1,2}[A-Z]{3}\d{2}-\d+-[CP]$/.test(id);
-
-async function deribitIndex() {
-  const r = await getJson<DeribitResp<{ index_price: number }>>(`${DERIBIT_TESTNET}/public/get_index_price?index_name=btc_usd`);
-  return new Decimal(r.result.index_price);
-}
-
-async function deribitQuote(instrumentId: string): Promise<Quote> {
-  const r = await getJson<DeribitResp<DeribitBook>>(
-    `${DERIBIT_TESTNET}/public/get_order_book?instrument_name=${encodeURIComponent(instrumentId)}&depth=1`,
-  );
-  const b = r.result;
-  const idx = new Decimal(b.index_price);
-  const option = isDeribitOption(instrumentId);
-  // Options quote in BTC; convert to USD per 1 BTC of option. Perps already quote in USD.
-  const toUsd = (p: number | null) => (p == null || p === 0 ? null : (option ? idx.mul(p) : new Decimal(p)).toFixed(2));
-  const ask = toUsd(b.best_ask_price);
-  let fee: Decimal;
-  if (option) {
-    const raw = idx.mul(DERIBIT_OPTION_FEE_BTC_PER_CONTRACT);
-    const cap = ask ? new Decimal(ask).mul("0.125") : raw;
-    fee = Decimal.min(raw, cap);
-  } else {
-    fee = idx.mul(DERIBIT_PERP_TAKER_FEE_RATE);
-  }
-  return {
-    venue: "DERIBIT",
-    instrumentId,
-    bid: toUsd(b.best_bid_price),
-    ask,
-    bidSize: b.best_bid_amount ? String(b.best_bid_amount) : null,
-    askSize: b.best_ask_amount ? String(b.best_ask_amount) : null,
-    feeEstimateUsd: fee.toFixed(2),
-    timestamp: new Date(b.timestamp).toISOString(),
-    source: "TESTNET",
-  };
-}
 
 // ---------- Gemini (public) ----------
 
-type GemContract = {
-  instrumentSymbol: string;
-  label: string;
-  prices?: { bestBid?: string; bestAsk?: string };
-};
-type GemEvent = {
-  ticker: string;
-  title: string;
-  expiryDate: string;
-  contracts?: GemContract[];
-  termsLink?: string | null;
-};
+type GemContract = { instrumentSymbol: string; label: string; prices?: { bestBid?: string; bestAsk?: string } };
+type GemEvent = { ticker: string; title: string; expiryDate: string; contracts?: GemContract[]; termsLink?: string | null };
 type GemBook = { bids: { price: string; amount: string }[]; asks: { price: string; amount: string }[] };
 
 const geminiSource = (env: "mainnet" | "sandbox"): Source => (env === "mainnet" ? "LIVE_MAINNET_READONLY" : "SANDBOX");
@@ -106,7 +50,6 @@ function toGeminiEvent(e: GemEvent, env: "mainnet" | "sandbox"): GeminiEvent {
 async function geminiEvents(env: "mainnet" | "sandbox", search?: string): Promise<GeminiEvent[]> {
   const host = GEMINI_HOSTS[env];
   const q = search?.trim();
-  // An exact ticker is cheapest to fetch directly.
   if (q && /^[A-Z0-9]+$/.test(q)) {
     try {
       return [toGeminiEvent(await getJson<GemEvent>(`${host}/v1/prediction-markets/events/${q}`), env)];
@@ -147,31 +90,39 @@ async function geminiQuote(symbol: string, env: "mainnet" | "sandbox"): Promise<
   };
 }
 
-// ---------- Authenticated calls: not implemented yet ----------
+// ---------- wiring ----------
 
-function needsKeys(fn: string): never {
-  throw new Error(
-    `venues.real.${fn}: authenticated venue calls are not implemented yet. ` +
-      "They need Gemini sandbox / Deribit testnet keys (DESIGN.md Section 13, items 1-3). Use VENUES_MODE=mock until then.",
-  );
-}
+const derivePublic = createDerivePublic();
+const derive = createDeriveAdapter();
+const gemini = createGeminiAdapter();
+
+/** Active BTC call names for the given expiries, so the orchestrator knows which L1 strikes to quote. */
+export const listCalls = (expiries: string[]) => derivePublic.listCalls(expiries);
+/** @deprecated use listCalls (venue is Derive now). */
+export const listDeribitCalls = listCalls;
 
 export const real = {
   discoverGeminiEvents: (env, search) => geminiEvents(env, search),
 
   async getQuote(venue: Venue, instrumentId: string, env?: "mainnet" | "sandbox" | "testnet") {
-    if (venue === "DERIBIT") return deribitQuote(instrumentId);
+    if (isDeriveVenue(venue)) return derivePublic.quote(instrumentId);
     if (venue === "GEMINI") return geminiQuote(instrumentId, env === "mainnet" ? "mainnet" : "sandbox");
-    throw new Error(`getQuote: unsupported venue ${venue}`);
+    return unsupported(venue);
   },
 
-  placeOrder: async () => needsKeys("placeOrder"),
-  getOrder: async () => needsKeys("getOrder"),
-  cancelOrder: async () => needsKeys("cancelOrder"),
-  getPositions: async () => needsKeys("getPositions"),
-  getMargin: async () => needsKeys("getMargin"),
+  placeOrder: (req) =>
+    isDeriveVenue(req.venue)
+      ? derive.placeOrder({ ...req, venue: "DERIVE" })
+      : req.venue === "GEMINI"
+        ? gemini.placeOrder(req)
+        : unsupported(req.venue),
+  getOrder: (venue, id) => (isDeriveVenue(venue) ? derive.getOrder(id) : venue === "GEMINI" ? gemini.getOrder(id) : unsupported(venue)),
+  cancelOrder: (venue, id) => (isDeriveVenue(venue) ? derive.cancelOrder(id) : venue === "GEMINI" ? gemini.cancelOrder(id) : unsupported(venue)),
+  getPositions: (venue, account) =>
+    isDeriveVenue(venue) ? derive.getPositions(account) : venue === "GEMINI" ? gemini.getPositions() : unsupported(venue),
+  getMargin: (account) => derive.getMargin(account),
 
   async getIndexPrice() {
-    return { priceUsd: (await deribitIndex()).toFixed(2), source: "TESTNET" as const, timestamp: new Date().toISOString() };
+    return { priceUsd: (await derivePublic.index()).toFixed(2), source: "TESTNET" as const, timestamp: new Date().toISOString() };
   },
 } satisfies VenuesApi;

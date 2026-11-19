@@ -1,14 +1,104 @@
 {
-  "note": "SIMULATED demo quotes (Lane B). Same numbers as packages/venues mock. Option prices in USD per 1 BTC; Gemini prices are the YES book.",
+  "note": "SIMULATED demo quotes (Lane B). Same numbers as packages/venues mock. L1/L2 venue is Derive testnet; option prices in USD per 1 BTC; Gemini prices are the YES book.",
   "quotes": [
-    { "venue": "DERIBIT", "instrumentId": "BTC-11DEC26-60000-C", "bid": "5390.00", "ask": "5440.00", "bidSize": "10", "askSize": "10", "feeEstimateUsd": "19.46", "timestamp": "2026-11-18T00:00:00.000Z", "source": "SIMULATED" },
-    { "venue": "DERIBIT", "instrumentId": "BTC-11DEC26-65000-C", "bid": "2150.00", "ask": "2180.00", "bidSize": "10", "askSize": "10", "feeEstimateUsd": "19.46", "timestamp": "2026-11-18T00:00:00.000Z", "source": "SIMULATED" },
-    { "venue": "DERIBIT", "instrumentId": "BTC-11DEC26-70000-C", "bid": "720.00", "ask": "750.00", "bidSize": "10", "askSize": "10", "feeEstimateUsd": "19.46", "timestamp": "2026-11-18T00:00:00.000Z", "source": "SIMULATED" },
-    { "venue": "DERIBIT", "instrumentId": "BTC_USDC-PERPETUAL", "bid": "64875.00", "ask": "64885.00", "bidSize": "5", "askSize": "5", "feeEstimateUsd": "32.44", "timestamp": "2026-11-18T00:00:00.000Z", "source": "SIMULATED" },
-    { "venue": "GEMINI", "instrumentId": "GEMI-FED261211-HIKEGT25", "bid": "0.02", "ask": "0.07", "bidSize": "500", "askSize": "500", "feeEstimateUsd": "0", "timestamp": "2026-11-18T00:00:00.000Z", "source": "SIMULATED" },
-    { "venue": "GEMINI", "instrumentId": "GEMI-BTC2611302200-HI60000", "bid": "0.80", "ask": "0.84", "bidSize": "300", "askSize": "300", "feeEstimateUsd": "0", "timestamp": "2026-11-18T00:00:00.000Z", "source": "SIMULATED" },
-    { "venue": "GEMINI", "instrumentId": "GEMI-BTC2611302200-HI62500", "bid": "0.62", "ask": "0.66", "bidSize": "300", "askSize": "300", "feeEstimateUsd": "0", "timestamp": "2026-11-18T00:00:00.000Z", "source": "SIMULATED" },
-    { "venue": "GEMINI", "instrumentId": "GEMI-BTC2611302200-HI65000", "bid": "0.45", "ask": "0.50", "bidSize": "300", "askSize": "300", "feeEstimateUsd": "0", "timestamp": "2026-11-18T00:00:00.000Z", "source": "SIMULATED" },
-    { "venue": "GEMINI", "instrumentId": "GEMI-BTC2611302200-HI67500", "bid": "0.30", "ask": "0.34", "bidSize": "300", "askSize": "300", "feeEstimateUsd": "0", "timestamp": "2026-11-18T00:00:00.000Z", "source": "SIMULATED" }
+    {
+      "venue": "DERIVE",
+      "instrumentId": "BTC-20261211-60000-C",
+      "bid": "5390.00",
+      "ask": "5440.00",
+      "bidSize": "5",
+      "askSize": "5",
+      "feeEstimateUsd": "19.46",
+      "timestamp": "2026-11-18T00:00:00.000Z",
+      "source": "SIMULATED"
+    },
+    {
+      "venue": "DERIVE",
+      "instrumentId": "BTC-20261211-65000-C",
+      "bid": "2150.00",
+      "ask": "2180.00",
+      "bidSize": "5",
+      "askSize": "5",
+      "feeEstimateUsd": "19.46",
+      "timestamp": "2026-11-18T00:00:00.000Z",
+      "source": "SIMULATED"
+    },
+    {
+      "venue": "DERIVE",
+      "instrumentId": "BTC-20261211-70000-C",
+      "bid": "720.00",
+      "ask": "750.00",
+      "bidSize": "5",
+      "askSize": "5",
+      "feeEstimateUsd": "19.46",
+      "timestamp": "2026-11-18T00:00:00.000Z",
+      "source": "SIMULATED"
+    },
+    {
+      "venue": "DERIVE",
+      "instrumentId": "BTC-PERP",
+      "bid": "64875.00",
+      "ask": "64885.00",
+      "bidSize": "5",
+      "askSize": "5",
+      "feeEstimateUsd": "19.46",
+      "timestamp": "2026-11-18T00:00:00.000Z",
+      "source": "SIMULATED"
+    },
+    {
+      "venue": "GEMINI",
+      "instrumentId": "GEMI-FED261211-HIKEGT25",
+      "bid": "0.02",
+      "ask": "0.07",
+      "bidSize": "500",
+      "askSize": "500",
+      "feeEstimateUsd": "0",
+      "timestamp": "2026-11-18T00:00:00.000Z",
+      "source": "SIMULATED"
+    },
+    {
+      "venue": "GEMINI",
+      "instrumentId": "GEMI-BTC2611302200-HI60000",
+      "bid": "0.80",
+      "ask": "0.84",
+      "bidSize": "300",
+      "askSize": "300",
+      "feeEstimateUsd": "0",
+      "timestamp": "2026-11-18T00:00:00.000Z",
+      "source": "SIMULATED"
+    },
+    {
+      "venue": "GEMINI",
+      "instrumentId": "GEMI-BTC2611302200-HI62500",
+      "bid": "0.62",
+      "ask": "0.66",
+      "bidSize": "300",
+      "askSize": "300",
+      "feeEstimateUsd": "0",
+      "timestamp": "2026-11-18T00:00:00.000Z",
+      "source": "SIMULATED"
+    },
+    {
+      "venue": "GEMINI",
+      "instrumentId": "GEMI-BTC2611302200-HI65000",
+      "bid": "0.45",
+      "ask": "0.50",
+      "bidSize": "300",
+      "askSize": "300",
+      "feeEstimateUsd": "0",
+      "timestamp": "2026-11-18T00:00:00.000Z",
+      "source": "SIMULATED"
+    },
+    {
+      "venue": "GEMINI",
+      "instrumentId": "GEMI-BTC2611302200-HI67500",
+      "bid": "0.30",
+      "ask": "0.34",
+      "bidSize": "300",
+      "askSize": "300",
+      "feeEstimateUsd": "0",
+      "timestamp": "2026-11-18T00:00:00.000Z",
+      "source": "SIMULATED"
+    }
   ]
 }

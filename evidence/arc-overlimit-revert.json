@@ -1,0 +1,14 @@
+{
+  "description": "Real onchain revert when the agent tries to release more than the per-tx cap directly (DESIGN.md Section 8 rescue sequence step 2).",
+  "contract": "ThesisTreasuryVault",
+  "vaultAddress": "0x1e9B755C7caA3d1D007d70A7cF77E93cc6A65E07",
+  "network": "arc-testnet",
+  "chainId": 5042002,
+  "call": "releaseWithinLimits(strategyId: \"strat_63491dbeab91\", destination: settlement, amount6: 30000000)",
+  "caller": "0x419792c79bC487e0fB4457080413A8973ACdc485",
+  "transactionHash": "0x2bd64a73237eadea49a4cb227f7e2b3a039da2171e335bcc43c7696bef0599d7",
+  "status": "reverted",
+  "revertReason": "ExceedsPerTxCap(amount6: 30000000, perTxCap6: 25000000)",
+  "explorerUrl": "https://explorer.testnet.arc.io/tx/0x2bd64a73237eadea49a4cb227f7e2b3a039da2171e335bcc43c7696bef0599d7",
+  "source": "ONCHAIN_TESTNET"
+}

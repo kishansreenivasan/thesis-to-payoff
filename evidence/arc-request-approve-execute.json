@@ -1,0 +1,53 @@
+{
+  "description": "Full owner-approval path for a release that exceeds the agent's own per-tx cap (DESIGN.md Section 8 rescue sequence steps 3, 4, 7).",
+  "contract": "ThesisTreasuryVault",
+  "vaultAddress": "0x1e9B755C7caA3d1D007d70A7cF77E93cc6A65E07",
+  "network": "arc-testnet",
+  "chainId": 5042002,
+  "requestId": "0x6d1a6f3746f2f8460dcb9665237a84e83bb071cee33dd0daaa04349277b978d1",
+  "strategyId": "strat_63491dbeab91",
+  "destination": "0x47D9A12bBC0c9EA77D2f9202b256e01A4eF9e618",
+  "amountUsdc": "30.000000",
+  "steps": [
+    {
+      "step": "requestRelease",
+      "caller": "0x419792c79bC487e0fB4457080413A8973ACdc485",
+      "callerRole": "AGENT_ROLE",
+      "transactionHash": "0x3c2d1c714a1c09b1747acc6d44861f32c01651cff369fa926db39ff87beafe2d",
+      "status": "success",
+      "expiresAtUtc": "2026-11-18T02:23:27Z"
+    },
+    {
+      "step": "approveRequest",
+      "caller": "0x7Da8b9753c9D9793fEB86047888463F47Ac85A01",
+      "callerRole": "OWNER_ROLE",
+      "transactionHash": "0x52b2994339ae784d1fb6dffe0ad573e59bebd561365f0588177b01810cb9b8bd",
+      "status": "success"
+    },
+    {
+      "step": "executeApproved",
+      "caller": "0x419792c79bC487e0fB4457080413A8973ACdc485",
+      "callerRole": "AGENT_ROLE",
+      "transactionHash": "0x02dbebb3d88a443252b188fa5e71fb76eb01b122c3dc87422c19c92583c224e4",
+      "status": "success",
+      "note": "Bypasses the per-tx/daily cap (owner approval is the control for over-limit amounts) but still checked the strategy cap and reserve floor."
+    }
+  ],
+  "finalRequestState": {
+    "ownerApproved": true,
+    "executed": true,
+    "canceled": false
+  },
+  "balancesAfter": {
+    "vaultUsdc6": "22000000",
+    "settlementUsdc6": "31000000",
+    "dailySpent6": "1000000",
+    "strategySpent6": "31000000"
+  },
+  "explorerUrls": {
+    "requestRelease": "https://explorer.testnet.arc.io/tx/0x3c2d1c714a1c09b1747acc6d44861f32c01651cff369fa926db39ff87beafe2d",
+    "approveRequest": "https://explorer.testnet.arc.io/tx/0x52b2994339ae784d1fb6dffe0ad573e59bebd561365f0588177b01810cb9b8bd",
+    "executeApproved": "https://explorer.testnet.arc.io/tx/0x02dbebb3d88a443252b188fa5e71fb76eb01b122c3dc87422c19c92583c224e4"
+  },
+  "source": "ONCHAIN_TESTNET"
+}

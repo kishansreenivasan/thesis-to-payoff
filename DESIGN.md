@@ -29,7 +29,7 @@ Read this section first. It is how you avoid waiting on each other.
 
 ## 1. What we are building
 
-A user types a market view in plain English through Grok Bot. The system turns it into a small multi-leg position across Deribit (an option and a perp) and Gemini Prediction Markets (event contracts), places it on testnet and sandbox, and then manages it. When the leveraged leg runs low on margin, the agent follows a fixed rescue sequence: it tries to release USDC from an Arc vault that enforces spending limits onchain, asks the owner to approve anything over the limit, and if the owner declines, trims the perp itself before the exchange would liquidate it. Everything shows on one dashboard, with every number labeled as real or simulated.
+A user types a market view in plain English through Grok Bot. The system turns it into a small multi-leg position across Derive (an option and a perp, onchain testnet) and Gemini Prediction Markets (event contracts), places it on testnet and sandbox, and then manages it. When the leveraged leg runs low on margin, the agent follows a fixed rescue sequence: it tries to release USDC from an Arc vault that enforces spending limits onchain, asks the owner to approve anything over the limit, and if the owner declines, trims the perp itself before the exchange would liquidate it. Everything shows on one dashboard, with every number labeled as real or simulated.
 
 ### Demo thesis (fixed)
 
@@ -39,8 +39,8 @@ A user types a market view in plain English through Grok Bot. The system turns i
 
 | Leg | Venue | Instrument (select at runtime) | Purpose | Real or simulated |
 |---|---|---|---|---|
-| L1 | Deribit testnet, main account | BTC call expiring 11 Dec 2026, strike nearest at-the-money | Bullish upside | Real testnet order |
-| L2 | Deribit testnet, perp subaccount | BTC perp, small long | Leveraged exposure that creates real margin pressure | Real testnet order |
+| L1 | Derive testnet, main subaccount | BTC call expiring 11 Dec 2026 (25 Dec until 11 Dec activates), strike nearest at-the-money | Bullish upside | Real testnet order |
+| L2 | Derive testnet, perp subaccount | `BTC-PERP`, small long | Leveraged exposure that creates real margin pressure | Real testnet order |
 | L3a | Gemini mainnet data only | `GEMI-FED261211-HIKEGT25` YES ("Hike >25bps") | Hedge against a bigger-than-expected Fed hike | Live mainnet quote; position SIMULATED |
 | L3b | Gemini sandbox | NO on the `BTC2611302200` strike nearest below the BTC index (e.g. "$62,500 or above") | Binary downside hedge for the perp | Real sandbox order |
 
@@ -48,7 +48,7 @@ A user types a market view in plain English through Grok Bot. The system turns i
 
 - Gemini **mainnet** lists `FED261211` (expires 2026-12-11 05:00 UTC). `HIKEGT25` quoted 0.02 bid / 0.07 ask. The 25bps hike traded near 0.90.
 - Gemini **sandbox** does **not** list `FED261211` or any economics events. It lists short-term crypto and commodity contracts and `BTC2611302200` (expires 2026-11-30 22:00 UTC).
-- Deribit Friday weekly options expire 08:00 UTC, so 11 Dec 2026 lines up with the Fed event.
+- **Venue change 2026-11-18:** Deribit testnet sign-up was unavailable to the team, so L1 and L2 moved to **Derive testnet** (wallet-based, Ethereum Sepolia, no exchange account). Derive lists BTC options expiring 11 Dec 2026 (active from 2026-11-20 08:00 UTC) and 25 Dec 2026 (active now), min size 0.01 BTC, plus `BTC-PERP`. Options expire 08:00 UTC, so 11 Dec lines up with the Fed decision (FOMC Dec 8-9, Gemini market settles Dec 11).
 - Arc testnet: chain ID 5042002, RPC `https://rpc.testnet.arc.io`, USDC `0x3600000000000000000000000000000000000000`. Confirmed against docs.
 
 If the sandbox later lists `FED261211`, L3a becomes a real sandbox order with no other changes. Lane B checks this daily.
@@ -63,7 +63,7 @@ If the sandbox later lists `FED261211`, L3a becomes a real sandbox order with no
 4. **Never trade or transfer on mainnet.** Reading public Gemini mainnet market data without keys is allowed.
 5. **Label everything.** Every external number, order and transaction carries a `source` field (Section 5).
 6. **Stay in your directories** (Section 0, rule 5).
-7. **LLM output never sets numbers.** The LLM only fills `ThesisIntent`. Deterministic code selects instruments, prices, sizes and checks limits.
+7. **Model output never sets numbers.** Grok Bot only supplies the thesis fields that become `ThesisIntent` (Section 10). There is no LLM on our server. Deterministic code selects instruments, prices, sizes and checks limits.
 8. **Do not claim** anything in Section 12.
 
 ---
@@ -99,7 +99,7 @@ Only the orchestrator composes packages. Packages import only `packages/shared`.
 | Contracts | Solidity, Foundry |
 | Tests | Vitest, forge test |
 | State | SQLite (better-sqlite3) with an append-only events table |
-| LLM | Anthropic API, structured output into `ThesisIntent` only |
+| Language understanding | Grok Bot only. Grok fills the `compile_thesis` MCP tool fields; our code validates them into `ThesisIntent`. No LLM API on the server. |
 | Hosting | Railway or Render, one service for API + MCP + web |
 
 No other languages, queues, Redis, or microservices.
@@ -180,7 +180,7 @@ placeOrder(req: OrderRequest): Promise<Order>
 getOrder(venue: Venue, clientOrderId: string): Promise<Order | null>
 cancelOrder(venue: Venue, clientOrderId: string): Promise<Order>
 getPositions(venue: Venue, account: "main" | "perp"): Promise<VenuePosition[]>
-getMargin(account: "main" | "perp"): Promise<MarginSnapshot>   // Deribit
+getMargin(account: "main" | "perp"): Promise<MarginSnapshot>   // Derive subaccounts
 getIndexPrice(): Promise<{ priceUsd: string; source: Source; timestamp: string }>
 
 // packages/strategy
@@ -192,12 +192,12 @@ payoffGrid(plan: StrategyPlan, quotes: Quote[]): PayoffGrid
 **Tasks in order:**
 1. `src/mock.ts` for venues and strategy. Merge.
 2. Gemini adapter: mainnet read-only discovery and quotes, sandbox auth, order, status, positions, cancel.
-3. Deribit adapter: instruments, book, account summary for main and perp accounts, buy, sell with `reduce_only`, positions, cancel, index price.
-4. Smoke tests (Section 6). Save to `evidence/gemini-smoke.json`, `evidence/deribit-smoke.json`.
+3. Derive adapter: instruments, tickers, subaccount margin for main and perp subaccounts, signed orders (EIP-712), reduce-only sells, positions, cancel, index price.
+4. Smoke tests (Section 6). Save to `evidence/gemini-smoke.json`, `evidence/derive-smoke.json`.
 5. `parseThesis`, `buildPlan`, `payoffGrid` with unit tests.
 6. Daily check: does sandbox list `FED261211`? Note result in `STATUS.md`.
 
-**Starts when:** immediately for tasks 1 and 5. Tasks 2 to 4 when `.env` has Gemini and Deribit keys.
+**Starts when:** immediately for tasks 1 and 5. Tasks 2 to 4 when `.env` has Gemini keys and the Derive wallet values.
 
 ### Lane C: shared types, orchestrator, MCP, dashboard, submission
 
@@ -239,13 +239,13 @@ import { z } from "zod";
 export const Source = z.enum([
   "LIVE_MAINNET_READONLY", // public market data from mainnet, no keys
   "SANDBOX",               // Gemini sandbox
-  "TESTNET",               // Deribit testnet
+  "TESTNET",               // Derive testnet (Deribit before 2026-11-18)
   "ONCHAIN_TESTNET",       // Arc testnet transaction
   "SIMULATED",             // computed or mocked by us
   "UNVERIFIED",
 ]);
 
-export const Venue = z.enum(["GEMINI", "DERIBIT", "ARC"]);
+export const Venue = z.enum(["GEMINI", "DERIBIT", "ARC", "DERIVE"]); // DERIBIT kept for compatibility; L1/L2 use DERIVE
 export const Dec = z.string().regex(/^-?\d+(\.\d+)?$/); // decimal as string
 
 export const ThesisIntent = z.object({
@@ -495,18 +495,20 @@ Verify every endpoint against the official docs before coding. If something diff
 
 **Smoke test:** list sandbox events; quote the L3b contract; place a 1-contract limit buy of NO; read status; cancel. List mainnet `FED261211` and quote `HIKEGT25`. Save redacted responses to `evidence/gemini-smoke.json`.
 
-### 6.2 Deribit testnet
+### 6.2 Derive testnet (replaced Deribit on 2026-11-18)
 
-- Base `https://test.deribit.com/api/v2/`. Docs: https://docs.deribit.com
-- Verify and use: `public/get_instruments`, `public/get_order_book`, `public/get_index_price`, `private/get_account_summary`, `private/get_positions`, `private/buy`, `private/sell` (with `reduce_only`), `private/cancel`, `private/get_order_state`.
-- Testnet wallets are not on any blockchain. Never send crypto to a Deribit testnet address.
-- **L1:** main account. BTC option expiring 11 Dec 2026, strike nearest the index.
-- **L2:** perp subaccount (human item 3). Prefer the USDC-margined linear BTC perp if listed on testnet, otherwise `BTC-PERPETUAL`. Note which in `CHANGES.md`.
-- `marginRatio = equity / maintenance_margin` from `private/get_account_summary` on the perp subaccount, converted to USD with the index.
+- App `https://testnet.app.derive.xyz`. API `https://testnet.api.derive.xyz/v3` (POST JSON-RPC). Docs: https://docs.derive.xyz
+- Chain: Ethereum Sepolia (11155111). Accounts are wallet-based; test USDC is minted in the testnet app. No real funds, ever.
+- Use: `public/get_all_instruments`, `public/get_instrument`, `public/get_ticker`, `private/order`, `private/get_order`, `private/get_open_orders`, `private/cancel`, `private/get_subaccount`.
+- Every order is an EIP-712 signed `Action` (domain `Matching` v1.0, testnet DOMAIN_SEPARATOR `0x24d6...3e85`). Private calls carry `X-DeriveWallet`, `X-DeriveTimestamp`, `X-DeriveSignature`.
+- **L1:** main subaccount. BTC call expiring 11 Dec 2026 if active, else 25 Dec 2026; strike nearest the index. Min size 0.01 BTC.
+- **L2:** perp subaccount. `BTC-PERP`, min 0.01 BTC. Reduce-only orders must be IOC or market on Derive.
+- `marginRatio = equity / maintenance requirement`, from `private/get_subaccount` on the perp subaccount. Derive reports net margins (value minus requirement), so requirement = `subaccount_value - maintenance_margin`.
+- Derive's testnet BTC index differs from Gemini's sandbox price; label each with its source.
 
 **Testnet fills:** testnet books are thin. On testnet only, set limit prices to cross the spread (buy at ask, sell at bid) so orders fill. If an order is not filled within 30 seconds, cancel and report `REJECTED` with reason `NO_FILL`.
 
-**Smoke test:** list Dec 11 options and the perp; read both account summaries; place and cancel a small order in each account. Save to `evidence/deribit-smoke.json`.
+**Smoke test:** list Dec 11 options and the perp; read both account summaries; place and cancel a small order in each account. Save to `evidence/derive-smoke.json`.
 
 ---
 
@@ -568,7 +570,7 @@ Every 10 seconds and on demand:
 4. `evaluateRisk(input)` returns a `RiskDecision`.
 5. Execute the action, log an `ActivityEvent` with the decision's `explanation`.
 
-`projectedRatio` = equity after applying the shock to the perp's PnL, divided by maintenance margin. It is always labeled `SIMULATED`. The shock only moves the projection. The real margin read from Deribit stays as reported.
+`projectedRatio` = equity after applying the shock to the perp's PnL, divided by maintenance margin. It is always labeled `SIMULATED`. The shock only moves the projection. The real margin read from Derive stays as reported.
 
 ### Thresholds (demo policy, not safety guarantees)
 
@@ -590,7 +592,7 @@ Every 10 seconds and on demand:
 3. Agent calls `requestRelease` for the same amount with a 2-minute expiry. Real onchain request.
 4. Owner approval request appears on the dashboard and approval page. Grok shows it when asked for status.
 5. Owner declines, or it expires. Agent cancels the request onchain.
-6. Agent places a **real reduce-only sell** on the Deribit testnet perp. Projected ratio recovers.
+6. Agent places a **real reduce-only sell** on the Derive testnet perp. Projected ratio recovers.
 7. If approved instead, agent calls `executeApproved`. Real release to the settlement wallet, then a `VENUE_CREDIT_SIMULATED` event. The projected ratio does not change from simulated credit, so the agent still reduces the perp if needed.
 
 Never wait on a pending transfer when the state is DELEVERAGE_REQUIRED.
@@ -599,14 +601,14 @@ Never wait on a pending transfer when the state is DELEVERAGE_REQUIRED.
 
 | Item | Limit |
 |---|---|
-| L1 Deribit call premium + fees | ≤ $230 |
+| L1 Derive call premium + fees | ≤ $230 |
 | L3a Fed hedge (simulated) | ≤ $40 |
 | L3b Gemini NO (real) | ≤ $40 |
 | Fee and slippage reserve | $30 |
 | Perp stop loss | $160 |
 | **Modeled max loss** | **≤ $500** |
 
-Size the perp so a -15% shock alone does not reach Deribit liquidation before the stop.
+Size the perp so a -15% shock alone does not reach Derive liquidation before the stop.
 
 The UI states plainly: the perp is closed at its stop and is not held to Dec 11, and a gap move can exceed the modeled max loss.
 
@@ -653,7 +655,7 @@ GET  /api/health
 
 | Tool | Effect |
 |---|---|
-| `compile_thesis` | text to draft plan, or a clear "not supported" reply |
+| `compile_thesis` | Grok sends the user's text plus the fields it extracted (`COMPILE_THESIS_INPUT_SCHEMA` in `@ttp/strategy`); returns a draft plan or a clear "not supported" reply |
 | `discover_events` | live Gemini events relevant to the thesis |
 | `quote_payoff` | prices, legs, payoff by Fed outcome |
 | `approve_strategy` | records approval for a versionHash |
@@ -665,7 +667,7 @@ MCP tools call orchestrator functions only. No financial logic in MCP.
 
 ### Unsupported theses
 
-`parseThesis` supports only bullish BTC with an optional Fed-hike concern and a max risk. Anything else returns `UnsupportedThesis` with a friendly reason and two example theses that work. The app never invents a plan for an unsupported thesis.
+Grok's fields go through `intentFromGrok`; text typed into the dashboard goes through `parseThesis` (an offline keyword parser). Both apply the same deterministic gate. It supports only bullish BTC with an optional Fed-hike concern and a max risk, and rejects a max risk that does not appear in the user's text. Anything else returns `UnsupportedThesis` with a friendly reason and two example theses that work. The app never invents a plan for an unsupported thesis.
 
 ---
 
@@ -689,7 +691,7 @@ MCP tools call orchestrator functions only. No financial logic in MCP.
 
 ## 12. Never claim
 
-- That Arc USDC funds Gemini or Deribit.
+- That Arc USDC funds Gemini or Derive.
 - That the system prevents all liquidations or guarantees max loss.
 - That a Gemini binary equals an option, or that anything is arbitrage.
 - That venues share margin. Say "one treasury with onchain spending rules".
@@ -706,13 +708,13 @@ Agents cannot do these. Values go in `.env` on the host and locally.
 | # | Task | Env vars | Unblocks |
 |---|---|---|---|
 | 1 | Gemini sandbox account, accept prediction terms, trading API key, fund test USD | `GEMINI_SANDBOX_KEY`, `GEMINI_SANDBOX_SECRET` | Lane B |
-| 2 | Deribit testnet account, trade API key, faucet funds | `DERIBIT_CLIENT_ID`, `DERIBIT_CLIENT_SECRET` | Lane B |
-| 3 | Deribit testnet subaccount for the perp, about $200 equivalent, its own trade key | `DERIBIT_PERP_CLIENT_ID`, `DERIBIT_PERP_CLIENT_SECRET` | Lane B |
+| 2 | Derive testnet: a fresh test-only EVM wallet, Sepolia ETH from a faucet, connect at testnet.app.derive.xyz, mint test USDC, deposit about $300 into a main subaccount | `DERIVE_WALLET`, `DERIVE_SIGNER_PRIVATE_KEY`, `DERIVE_MAIN_SUBACCOUNT_ID` | Lane B |
+| 3 | Derive testnet second subaccount for the perp, about $230 test USDC (Lane A's calibration script gives the exact amount for the -15% rescue band) | `DERIVE_PERP_SUBACCOUNT_ID` | Lane B |
 | 4 | Arc testnet wallets: owner, agent, guardian, settlement. Faucet USDC for gas and vault | `ARC_AGENT_PRIVATE_KEY`, `ARC_OWNER_ADDRESS`, `ARC_GUARDIAN_ADDRESS`, `ARC_SETTLEMENT_ADDRESS` | Lane A |
 | 5 | Owner wallet in a browser wallet. Owner key never on the server | none | Lane A deploy, approval page |
 | 6 | Railway or Render project with a public HTTPS URL | `PUBLIC_BASE_URL`, `MCP_BEARER_TOKEN` | Lane C |
 | 7 | Grok Bot access; add our MCP server as a custom connector | none | Lane C testing |
-| 8 | Anthropic API key | `LLM_API_KEY` | Lane B |
+| 8 | (Removed 2026-11-18: no Anthropic API. Grok Bot does the language understanding.) | none | none |
 | 9 | Public GitHub repo created this week; agents get push access | none | all |
 | 10 | Ask Gemini (office hours or dev team) whether `FED261211` can be listed in sandbox | none | L3a upgrade |
 | 11 | (Extra) Telegram bot token and chat id | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | alerts |
@@ -769,7 +771,7 @@ Lane C | ...
 5. Press "Shock BTC -15%". Projected ratio falls below 1.5.
 6. Agent tries to release 80 USDC: real onchain revert on the explorer. Agent files an approval request.
 7. Ask Grok "what's my status?". Grok shows the pending request and link.
-8. Decline on the approval page. Agent places a real reduce-only order on the Deribit testnet perp. Gauge recovers.
+8. Decline on the approval page. Agent places a real reduce-only order on the Derive testnet perp. Gauge recovers.
 9. Activity log: every step with source badges. Close: "One thesis. Event-aware execution. Onchain spending discipline."
 
 **Video (2 to 3 minutes):** same flow, opening the positions fresh, with explorer and venue order ids visible.
@@ -779,7 +781,7 @@ Lane C | ...
 ## 17. Definition of done
 
 - [ ] Vault tests pass. Vault deployed, address and tx hashes in README.
-- [ ] Real Gemini sandbox order (L3b) and real Deribit testnet orders (L1, L2, reduce-only), with evidence files.
+- [ ] Real Gemini sandbox order (L3b) and real Derive testnet orders (L1, L2, reduce-only), with evidence files.
 - [ ] Real onchain revert, request, cancel or approve, and release, with evidence files.
 - [ ] `pnpm demo:reset` then `pnpm demo:open` then the script runs with no manual edits.
 - [ ] Every number on screen has a source badge.

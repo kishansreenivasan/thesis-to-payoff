@@ -12,7 +12,8 @@ import type {
   VenuePosition,
   VenuesApi,
 } from "@ttp/shared";
-import { DERIBIT_OPTION_FEE_BTC_PER_CONTRACT, DERIBIT_PERP_TAKER_FEE_RATE } from "./conventions";
+import { DERIVE_TAKER_FEE_RATE } from "./conventions";
+import { toDeriveExpiry } from "./derive";
 
 const SRC = "SIMULATED" as const;
 export const MOCK_INDEX_USD = "64880.00";
@@ -26,20 +27,15 @@ const PERP_IM_RATE = new Decimal("0.11");
 type Book = { bid: string | null; ask: string | null; size: string | null; fee: string };
 
 const idx = new Decimal(MOCK_INDEX_USD);
-const optFee = idx.mul(DERIBIT_OPTION_FEE_BTC_PER_CONTRACT).toFixed(2);
+const takerFee = idx.mul(DERIVE_TAKER_FEE_RATE).toFixed(2);
 
 const BOOKS: Record<string, Book> = {
-  // Deribit options, USD per 1 BTC
-  "BTC-11DEC26-60000-C": { bid: "5390.00", ask: "5440.00", size: "10", fee: optFee },
-  "BTC-11DEC26-65000-C": { bid: "2150.00", ask: "2180.00", size: "10", fee: optFee },
-  "BTC-11DEC26-70000-C": { bid: "720.00", ask: "750.00", size: "10", fee: optFee },
-  // Deribit perps, USD per 1 BTC
-  "BTC_USDC-PERPETUAL": {
-    bid: "64875.00",
-    ask: "64885.00",
-    size: "5",
-    fee: idx.mul(DERIBIT_PERP_TAKER_FEE_RATE).toFixed(2),
-  },
+  // Derive options, USD per 1 BTC
+  "BTC-20261211-60000-C": { bid: "5390.00", ask: "5440.00", size: "5", fee: takerFee },
+  "BTC-20261211-65000-C": { bid: "2150.00", ask: "2180.00", size: "5", fee: takerFee },
+  "BTC-20261211-70000-C": { bid: "720.00", ask: "750.00", size: "5", fee: takerFee },
+  // Derive perp, USD per 1 BTC
+  "BTC-PERP": { bid: "64875.00", ask: "64885.00", size: "5", fee: takerFee },
   // Gemini, YES book per contract
   "GEMI-FED261211-HIKEGT25": { bid: "0.02", ask: "0.07", size: "500", fee: "0" },
   "GEMI-FED261211-HIKE25": { bid: "0.88", ask: "0.93", size: "500", fee: "0" },
@@ -81,6 +77,9 @@ const EVENTS: GeminiEvent[] = [
   },
 ];
 
+/** "DERIBIT" is a compatibility alias for "DERIVE" (venue switch 2026-11-18). */
+const norm = <V extends string>(v: V) => (v === "DERIBIT" ? "DERIVE" : v) as V;
+
 function createMockVenues() {
   const orders = new Map<string, Order>();
   // key: `${venue}|${account}|${instrumentId}` -> signed qty and avg price
@@ -120,7 +119,7 @@ function createMockVenues() {
       const b = BOOKS[instrumentId];
       if (!b) throw new Error(`mock: no book for ${venue} ${instrumentId}`);
       return {
-        venue,
+        venue: norm(venue),
         instrumentId,
         bid: b.bid,
         ask: b.ask,
@@ -137,6 +136,7 @@ function createMockVenues() {
       if (existing) return existing; // idempotent on clientOrderId
       const o: Order = {
         ...req,
+        venue: norm(req.venue),
         venueOrderId: `mock-${orders.size + 1}`,
         filledQuantity: req.quantity,
         avgPrice: req.limitPrice,
@@ -166,10 +166,11 @@ function createMockVenues() {
       const out: VenuePosition[] = [];
       for (const [k, p] of positions) {
         const [v, a, instrumentId] = k.split("|") as [string, string, string];
-        if (v !== venue || (venue === "DERIBIT" && a !== account) || p.qty.isZero()) continue;
+        const ven = norm(venue);
+        if (v !== ven || (ven === "DERIVE" && a !== account) || p.qty.isZero()) continue;
         const m = mark(instrumentId);
         out.push({
-          venue,
+          venue: ven,
           account: a,
           instrumentId,
           quantity: p.qty.toString(),
@@ -184,7 +185,7 @@ function createMockVenues() {
     },
 
     async getMargin(account) {
-      const perp = positions.get(key("DERIBIT", "perp", "BTC_USDC-PERPETUAL"));
+      const perp = positions.get(key("DERIVE", "perp", "BTC-PERP"));
       const size = account === "perp" && perp ? perp.qty : new Decimal(0);
       const pnl = perp && account === "perp" ? idx.sub(perp.avg).mul(perp.qty) : new Decimal(0);
       const notional = size.abs().mul(idx);
@@ -209,6 +210,12 @@ function createMockVenues() {
   } satisfies VenuesApi;
 
   return api;
+}
+
+/** Mock counterpart of real.listCalls. Accepts "20261211" or "11DEC26". */
+export async function listCallsMock(expiries: string[]): Promise<string[]> {
+  const codes = expiries.map(toDeriveExpiry);
+  return Object.keys(BOOKS).filter((id) => id.endsWith("-C") && codes.some((c) => id.startsWith(`BTC-${c}-`)));
 }
 
 /** Fresh mock with empty order and position state (use in tests and demo:reset). */

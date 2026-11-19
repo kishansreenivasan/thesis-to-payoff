@@ -16,7 +16,49 @@ Append new entries at the top. Format: DESIGN.md Section 14. Humans fill in "Dec
 
 ---
 
-## [Lane B] L1 budget too small for Deribit's 0.1 BTC option minimum (OPEN)
+## [Lane C] Hosted MCP transport and deployment not available (OPEN)
+- When: 2026-11-19
+- Task: C9, host the API, web app and MCP connector
+- Expected: an MCP HTTP transport authenticated with a bearer token, reachable at `PUBLIC_BASE_URL`
+- Actual: `compile_thesis` schema/handler is implemented, but there is no MCP HTTP transport or hosting project configured. `PUBLIC_BASE_URL` and `MCP_BEARER_TOKEN` are not available locally.
+- Evidence: `docs/agents/lane-c.md`; Lane C handoff merged in PR #23
+- Options I see: 1) create the hosted project and implement the transport there; 2) implement and validate the transport locally, then deploy when hosting is ready
+- Meanwhile: dashboard and API mock demo work locally; read-only live venue quotes were verified
+- Decision (filled by humans): pending hosting choice/setup
+
+## [Lane A/C] Live rehearsal awaits Derive access and Arc vault funding (OPEN)
+- When: 2026-11-19
+- Task: run live calibration and the Arc-backed rehearsal
+- Expected: authenticated Derive margin/position reads and enough vault funds for the approval/release sequence
+- Actual: authenticated Derive credentials are missing locally. The read-only Arc precheck found 22 USDC total, 12 USDC above the reserve floor; the rehearsal can require up to 100 USDC.
+- Evidence: `docs/HUMAN-TODO.md`, `docs/agents/lane-a.md`, `docs/agents/lane-c.md`
+- Options I see: 1) configure Derive testnet credentials and fund the Arc test vault; 2) continue using mock execution until then
+- Meanwhile: mock demo and public/read-only quote route are available
+- Decision (filled by humans): pending credential setup and testnet funding
+
+## [Lane B] Daily Gemini sandbox FED261211 check not recorded (OPEN)
+- When: 2026-11-19
+- Task: confirm whether the Gemini sandbox lists `FED261211`
+- Expected: record sandbox discovery result in `STATUS.md`
+- Actual: rechecked 2026-11-19 at `https://api.sandbox.gemini.com/v1/prediction-markets/events/FED261211`; the endpoint returned `Event not found` (HTTP 404)
+- Evidence: `docs/agents/lane-b.md`, `evidence/gemini-smoke.json`
+- Options I see: 1) recheck the sandbox and update status; 2) leave L3a as a live read-only mainnet quote with simulated position
+- Meanwhile: strategy already handles the L3a/L3b split; L3a uses a live read-only quote and simulated position
+- Decision (filled by humans): pending recheck
+
+---
+
+## [Lane B] Deribit testnet sign-up unavailable to the team (RESOLVED)
+- When: 2026-11-18
+- Task: human setup items 2-3 (Deribit testnet accounts and API keys)
+- Expected: DESIGN.md Section 13: humans create Deribit testnet accounts
+- Actual: the team could not create a Deribit testnet account, even over a VPN.
+- Evidence: Derive testnet checked live on 2026-11-18. It lists BTC options for 20261211 (activates 2026-11-20 08:00 UTC) and 20261225 (active, ATM 65000C about 3,048 bid/ask, 5 BTC size), min 0.01 BTC, and BTC-PERP (tight spread, min 0.01 BTC). The Gemini sandbox also lists BTCGUSDPERP.
+- Options I see: 1) Derive testnet for L1 and L2; 2) perp on Gemini sandbox, option venue still needed; 3) keep Deribit.
+- Meanwhile: n/a
+- Decision (filled by humans): 2026-11-18. Use Derive testnet for L1 (call) and L2 (perp). The L1 out-of-the-money fallback is no longer needed at current prices (0.07 BTC ATM fits $230). Live plan: BTC-20261225-65000-C 0.07 BTC ($210.57), BTC-PERP 0.0166 BTC; modeled max loss $441.25.
+
+## [Lane B] L1 budget too small for Deribit's 0.1 BTC option minimum (RESOLVED)
 - When: 2026-11-18 00:10 UTC
 - Task: buildPlan against live Deribit testnet quotes (task 5)
 - Expected: DESIGN.md Section 8: L1 call premium + fees <= $230, strike nearest at-the-money
@@ -27,9 +69,11 @@ Append new entries at the top. Format: DESIGN.md Section 14. Humans fill in "Dec
   2. Pick the nearest strike whose 0.1 BTC cost fits $230 (an out-of-the-money call, roughly 70000 to 72000). Keeps the budget table; L1 is no longer at-the-money.
   3. Raise max risk for the demo thesis (for example $650). Changes the fixed demo text.
 - Meanwhile: mocks use an 11DEC26 ATM price that fits ($2,180 per BTC), so `pnpm demo:mock` works. Real mode will refuse to build a plan until this is decided.
-- Decision (filled by humans):
+- Decision (filled by humans): 2026-11-18. Use the cheaper out-of-the-money call (option 2).
+  buildPlan takes the at-the-money call if 0.1 BTC fits the L1 budget, otherwise the lowest strike
+  above BTC whose 0.1 BTC cost fits. Never an in-the-money strike. Live run 2026-11-18: BTC-25DEC26-68000-C, 0.1 BTC, $212.31.
 
-## [Lane B] No BTC2611302200 strike at or below the BTC index in Gemini sandbox (OPEN)
+## [Lane B] No BTC2611302200 strike at or below the BTC index in Gemini sandbox (RESOLVED)
 - When: 2026-11-18 00:10 UTC
 - Task: L3b selection against live sandbox data (task 5)
 - Expected: DESIGN.md Section 6.1: "or above" contract with the highest strike at or below the current BTC index
@@ -40,7 +84,10 @@ Append new entries at the top. Format: DESIGN.md Section 14. Humans fill in "Dec
   2. Use another sandbox BTC event whose strikes bracket the index, if one exists. Recheck daily.
   3. Ask Gemini (human item 10) whether sandbox strikes can be relisted around the current price.
 - Meanwhile: mock data includes a 62,500 strike, so `pnpm demo:mock` works.
-- Decision (filled by humans):
+- Decision (filled by humans): 2026-11-18. Use the 67,500 strike (option 1).
+  buildPlan takes the highest strike at or below BTC if one has a YES bid, otherwise the lowest strike
+  above BTC. Size is capped at the NO liquidity on the book (YES bid size). Live run 2026-11-18:
+  HI67500 NO at 0.68, 1 contract ($0.68), because the book shows 1 contract. The hedge is real but tiny until sandbox liquidity improves.
 
 ## [Lane B] No 11 Dec 2026 BTC option expiry on Deribit testnet (RESOLVED)
 - When: 2026-11-17 23:45 UTC

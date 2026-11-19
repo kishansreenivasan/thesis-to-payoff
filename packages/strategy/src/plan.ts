@@ -1,9 +1,9 @@
 // buildPlan (Lane B): deterministic instrument selection, sizing and budget checks.
-// The LLM never touches anything in this file (DESIGN.md Section 2, rule 7).
+// No model output touches anything in this file (DESIGN.md Section 2, rule 7).
 import { createHash } from "node:crypto";
 import Decimal from "decimal.js";
 import type { Leg, Quote, StrategyPlan, ThesisIntent } from "@ttp/shared";
-import { isDeribitPerp, isLinearPerp, parseDeribitOption, parseGeminiStrike } from "./instruments";
+import { isPerp, isPreferredPerp, parseOption, parseGeminiStrike } from "./instruments";
 
 /** Budget split for a $500 max risk (DESIGN.md Section 8). Scaled linearly for other amounts. */
 export const BUDGET_SHARES = {
@@ -17,14 +17,20 @@ export const BUDGET_SHARES = {
 /** Shock the perp stop is sized against: a -15% move alone takes the perp to its stop. */
 export const PERP_STOP_MOVE = new Decimal("0.15");
 
-/** L1 expiry preference (decision 2026-11-17, BLOCKED.md): 11DEC26 if listed, else 25DEC26. */
-export const L1_EXPIRY_PREFERENCE = ["11DEC26", "25DEC26"];
+/** L1 expiry preference (decision 2026-11-17, BLOCKED.md): Dec 11 if listed and active, else Dec 25. Derive codes. */
+export const L1_EXPIRY_PREFERENCE = ["20261211", "20261225"];
+
+/** The L1/L2 venue (Derive testnet since 2026-11-18). Quotes tagged "DERIBIT" are accepted as an alias. */
+export const L1L2_VENUE = "DERIVE" as const;
+const isL1L2Venue = (v: string) => v === "DERIVE" || v === "DERIBIT";
 
 export const FED_HEDGE_SYMBOL = "GEMI-FED261211-HIKEGT25";
 export const L3B_EVENT = "BTC2611302200";
 
-const DERIBIT_OPTION_STEP = new Decimal("0.1"); // min and increment, BTC
-const DERIBIT_PERP_STEP = new Decimal("0.0001"); // BTC_USDC-PERPETUAL min and increment
+// Derive testnet (public/get_instrument, 2026-11-18): options min 0.01 BTC; BTC-PERP min 0.01, step 0.0001.
+const OPTION_STEP = new Decimal("0.01"); // min and the increment we size in, BTC
+const PERP_MIN = new Decimal("0.01");
+const PERP_STEP = new Decimal("0.0001");
 const GEMINI_STEP = new Decimal(1); // whole contracts
 
 export class PlanError extends Error {
@@ -55,41 +61,73 @@ function referencePrice(perp: Quote): Decimal {
 }
 
 function pickPerp(quotes: Quote[]): Quote {
-  const perps = quotes.filter((q) => q.venue === "DERIBIT" && isDeribitPerp(q.instrumentId));
-  const p = perps.find((q) => isLinearPerp(q.instrumentId)) ?? perps[0];
-  if (!p) throw new PlanError("NO_PERP_QUOTE", "need a Deribit BTC perpetual quote");
+  const perps = quotes.filter((q) => isL1L2Venue(q.venue) && isPerp(q.instrumentId));
+  const p = perps.find((q) => isPreferredPerp(q.instrumentId)) ?? perps[0];
+  if (!p) throw new PlanError("NO_PERP_QUOTE", "need a Derive BTC-PERP quote");
   return p;
 }
 
-function pickCall(quotes: Quote[], ref: Decimal) {
+/** Cost of the minimum option lot (0.01 BTC on Derive) including fees, or null without an ask. */
+const minLotCost = (q: Quote) => (q.ask ? new Decimal(q.ask).add(q.feeEstimateUsd).mul(OPTION_STEP) : null);
+
+/**
+ * L1 selection (decision 2026-11-18, BLOCKED.md): within the preferred expiry, take the call
+ * nearest the reference price if the minimum lot fits the L1 budget; otherwise the lowest
+ * out-of-the-money strike whose minimum lot fits.
+ */
+function pickCall(quotes: Quote[], ref: Decimal, budget: Decimal) {
   const calls = quotes
-    .filter((q) => q.venue === "DERIBIT")
-    .map((q) => ({ q, o: parseDeribitOption(q.instrumentId) }))
+    .filter((q) => isL1L2Venue(q.venue))
+    .map((q) => ({ q, o: parseOption(q.instrumentId) }))
     .filter((x): x is { q: Quote; o: NonNullable<typeof x.o> } => x.o?.kind === "C");
   for (const code of L1_EXPIRY_PREFERENCE) {
     const at = calls.filter((c) => c.o.expiryCode === code);
     if (at.length === 0) continue;
-    at.sort((a, b) => a.o.strike.sub(ref).abs().cmp(b.o.strike.sub(ref).abs()) || a.o.strike.cmp(b.o.strike));
-    return at[0]!;
-  }
-  throw new PlanError("NO_L1_EXPIRY", `need Deribit call quotes for one of ${L1_EXPIRY_PREFERENCE.join(", ")}`);
-}
-
-function pickL3b(quotes: Quote[], ref: Decimal) {
-  const strikes = quotes
-    .filter((q) => q.venue === "GEMINI")
-    .map((q) => ({ q, s: parseGeminiStrike(q.instrumentId) }))
-    .filter((x): x is { q: Quote; s: NonNullable<typeof x.s> } => x.s?.eventTicker === L3B_EVENT)
-    .filter((x) => x.s.strike.lte(ref))
-    .sort((a, b) => b.s.strike.cmp(a.s.strike));
-  const best = strikes[0];
-  if (!best) {
+    const byDistance = [...at].sort(
+      (a, b) => a.o.strike.sub(ref).abs().cmp(b.o.strike.sub(ref).abs()) || a.o.strike.cmp(b.o.strike),
+    );
+    const atm = byDistance[0]!;
+    const fits = (c: (typeof at)[number]) => {
+      const cost = minLotCost(c.q);
+      return cost !== null && cost.lte(budget);
+    };
+    if (fits(atm)) return { ...atm, otm: false as const };
+    const otm = at
+      .filter((c) => c.o.strike.gt(ref) && fits(c))
+      .sort((a, b) => a.o.strike.cmp(b.o.strike))[0];
+    if (otm) return { ...otm, otm: true as const, atm };
     throw new PlanError(
-      "NO_L3B_STRIKE",
-      `no ${L3B_EVENT} "or above" strike at or below BTC ${usd(ref)} (DESIGN.md Section 6.1)`,
+      "L1_BUDGET_BELOW_MIN_SIZE",
+      `no ${code} call costs at most ${usd(budget)} for the ${OPTION_STEP.toString()} BTC minimum (at-the-money ${atm.q.instrumentId}: ${
+        minLotCost(atm.q) ? usd(minLotCost(atm.q)!) : "no ask"
+      })`,
     );
   }
-  return best;
+  throw new PlanError("NO_L1_EXPIRY", `need Derive call quotes for one of ${L1_EXPIRY_PREFERENCE.join(", ")}`);
+}
+
+/**
+ * L3b selection: the highest "or above" strike at or below BTC (DESIGN.md Section 6.1). If none is
+ * listed, the lowest strike above BTC (decision 2026-11-18, BLOCKED.md). NO still pays if BTC
+ * finishes below that strike. Only strikes with a YES bid (someone to sell us NO) qualify.
+ */
+function pickL3b(quotes: Quote[], ref: Decimal) {
+  const strikes = quotes
+    .filter((q) => q.venue === "GEMINI" && q.bid)
+    .map((q) => ({ q, s: parseGeminiStrike(q.instrumentId) }))
+    .filter((x): x is { q: Quote; s: NonNullable<typeof x.s> } => x.s?.eventTicker === L3B_EVENT);
+  const below = strikes.filter((x) => x.s.strike.lte(ref)).sort((a, b) => b.s.strike.cmp(a.s.strike))[0];
+  if (below) return { ...below, aboveIndex: false };
+  const above = strikes.filter((x) => x.s.strike.gt(ref)).sort((a, b) => a.s.strike.cmp(b.s.strike))[0];
+  if (above) return { ...above, aboveIndex: true };
+  throw new PlanError("NO_L3B_STRIKE", `no ${L3B_EVENT} "or above" strike with a YES bid`);
+}
+
+/** Cap a quantity at the size shown on the side we trade against, when the venue reports it. */
+function capToBook(qty: Decimal, size: string | null, step: Decimal): { qty: Decimal; capped: boolean } {
+  if (!size) return { qty, capped: false };
+  const avail = floorTo(new Decimal(size), step);
+  return avail.lt(qty) ? { qty: avail, capped: true } : { qty, capped: false };
 }
 
 function stableHash(value: unknown): string {
@@ -116,20 +154,22 @@ export function buildPlan(intent: ThesisIntent, quotes: Quote[], revision = 1): 
     "Limit prices cross the spread (buy at ask) so thin testnet books fill (DESIGN.md Section 6.2).",
   ];
 
-  // ---- L1: Deribit call, strike nearest the reference price ----
-  const call = pickCall(quotes, ref);
+  // ---- L1: Derive call, nearest the money that fits the budget ----
+  const call = pickCall(quotes, ref, budget.L1);
   const callUnit = requireAsk(call.q).add(call.q.feeEstimateUsd);
-  const callQty = floorTo(budget.L1.div(callUnit), DERIBIT_OPTION_STEP);
-  if (callQty.lt(DERIBIT_OPTION_STEP)) {
-    throw new PlanError(
-      "L1_BUDGET_BELOW_MIN_SIZE",
-      `${call.q.instrumentId} costs ${usd(callUnit.mul(DERIBIT_OPTION_STEP))} for the 0.1 BTC minimum; L1 budget is ${usd(budget.L1)}`,
+  const callFit = capToBook(floorTo(budget.L1.div(callUnit), OPTION_STEP), call.q.askSize, OPTION_STEP);
+  const callQty = callFit.qty;
+  if (callQty.lt(OPTION_STEP)) throw new PlanError("L1_NO_LIQUIDITY", `${call.q.instrumentId} ask size below the ${OPTION_STEP.toString()} BTC minimum`);
+  const callCost = callUnit.mul(callQty);
+  if (call.otm) {
+    assumptions.push(
+      `At-the-money ${call.atm.q.instrumentId} costs more than the ${usd(budget.L1)} L1 budget for the minimum lot; L1 uses the nearest out-of-the-money call that fits, ${call.q.instrumentId} (decision 2026-11-18).`,
     );
   }
-  const callCost = callUnit.mul(callQty);
+  if (callFit.capped) assumptions.push(`L1 size capped at the ${call.q.askSize} BTC shown on the ask.`);
   legs.push({
     legId: "L1",
-    venue: "DERIBIT",
+    venue: L1L2_VENUE,
     account: "main",
     instrumentId: call.q.instrumentId,
     type: "CALL",
@@ -144,16 +184,16 @@ export function buildPlan(intent: ThesisIntent, quotes: Quote[], revision = 1): 
     settlementNote: `European call, strike ${call.o.strike.toString()}, expires ${call.o.expiryUtc}. Max loss is the premium.`,
   });
   if (call.o.expiryCode !== L1_EXPIRY_PREFERENCE[0]) {
-    assumptions.push(`11DEC26 not listed; L1 uses ${call.o.expiryCode} (decision 2026-11-17).`);
+    assumptions.push(`Dec 11 options not active on Derive yet; L1 uses ${call.o.expiryCode} (decision 2026-11-17).`);
   }
 
-  // ---- L2: Deribit perp, sized so a -15% move takes it to its stop ----
+  // ---- L2: Derive perp, sized so a -15% move takes it to its stop ----
   const perpAsk = requireAsk(perpQ);
-  const perpQty = floorTo(budget.stop.div(perpAsk.mul(PERP_STOP_MOVE)), DERIBIT_PERP_STEP);
-  if (perpQty.lt(DERIBIT_PERP_STEP)) throw new PlanError("PERP_TOO_SMALL", "perp stop budget below minimum size");
+  const perpQty = floorTo(budget.stop.div(perpAsk.mul(PERP_STOP_MOVE)), PERP_STEP);
+  if (perpQty.lt(PERP_MIN)) throw new PlanError("PERP_TOO_SMALL", `perp size ${perpQty.toString()} BTC is below the ${PERP_MIN.toString()} BTC minimum`);
   legs.push({
     legId: "L2",
-    venue: "DERIBIT",
+    venue: L1L2_VENUE,
     account: "perp",
     instrumentId: perpQ.instrumentId,
     type: "PERP",
@@ -197,8 +237,16 @@ export function buildPlan(intent: ThesisIntent, quotes: Quote[], revision = 1): 
   const l3b = pickL3b(quotes, ref);
   const noCost = new Decimal(1).sub(requireBid(l3b.q)); // NO = 1 - YES bid
   const noUnit = noCost.add(l3b.q.feeEstimateUsd);
-  const noQty = floorTo(budget.L3b.div(noUnit), GEMINI_STEP);
-  if (noQty.lt(1)) throw new PlanError("L3B_TOO_SMALL", "L3b budget below one contract");
+  // Buying NO trades against YES bids, so the YES bid size is the NO liquidity.
+  const noFit = capToBook(floorTo(budget.L3b.div(noUnit), GEMINI_STEP), l3b.q.bidSize, GEMINI_STEP);
+  const noQty = noFit.qty;
+  if (noQty.lt(1)) throw new PlanError("L3B_TOO_SMALL", "L3b budget or liquidity below one contract");
+  if (l3b.aboveIndex) {
+    assumptions.push(
+      `No ${L3B_EVENT} strike is at or below BTC ${usd(ref)}; L3b uses the lowest strike above it, ${l3b.s.strike.toString()} (decision 2026-11-18).`,
+    );
+  }
+  if (noFit.capped) assumptions.push(`L3b size capped at the ${l3b.q.bidSize} contracts of NO liquidity on the book.`);
   legs.push({
     legId: "L3b",
     venue: "GEMINI",

@@ -1,14 +1,19 @@
 // Live keyless reads against public endpoints. Off by default; run with VENUES_LIVE=1 pnpm test.
 import { describe, expect, it } from "vitest";
 import { GeminiEvent, Quote } from "@ttp/shared";
-import { real } from "../src/real";
+import { listCalls, real } from "../src/real";
 
 describe.skipIf(!process.env.VENUES_LIVE)("venues real, public endpoints (live)", () => {
-  it("Deribit testnet index and perp quote", async () => {
+  it("Derive testnet index, perp quote and Dec 25 calls", async () => {
     const idx = await real.getIndexPrice();
     expect(Number(idx.priceUsd)).toBeGreaterThan(1000);
-    const q = Quote.parse(await real.getQuote("DERIBIT", "BTC_USDC-PERPETUAL", "testnet"));
+    const q = Quote.parse(await real.getQuote("DERIVE", "BTC-PERP", "testnet"));
     expect(q.source).toBe("TESTNET");
+    expect(q.ask).not.toBeNull();
+    const calls = await listCalls(["20261225"]);
+    expect(calls.length).toBeGreaterThan(0);
+    const c = Quote.parse(await real.getQuote("DERIVE", calls[0]!, "testnet"));
+    expect(c.venue).toBe("DERIVE");
   });
 
   it("Gemini mainnet FED261211 and HIKEGT25 quote", async () => {
