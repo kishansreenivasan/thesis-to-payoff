@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import Fastify from "fastify";
+import { createOrderStore } from "./order-store";
 import {
   OrderRequest,
   PositionSnapshot,
@@ -28,6 +29,8 @@ interface Dependencies {
 
 export function buildApp(deps: Dependencies = {}) {
   const app = Fastify({ logger: true });
+  const store = createOrderStore();
+  app.addHook("onClose", async () => store.close());
   const quoted = new Map<string, { plan: StrategyPlan; quotes: ReturnType<typeof Quote.parse>[] }>();
   const approvals = new Map<string, string>();
   const positions = new Map<string, ReturnType<typeof PositionSnapshot.parse>>();
@@ -60,12 +63,9 @@ export function buildApp(deps: Dependencies = {}) {
       return reply.code(400).send({ error: "text must be a non-empty string" });
     }
     if (!deps.strategy) return reply.code(503).send({ error: "Strategy service is not available" });
-    if (
-      process.env.DEMO_MODE !== "true" ||
-      (process.env.VENUES_MODE ?? "mock") !== "mock" ||
-      (process.env.STRATEGY_MODE ?? "mock") !== "mock"
-    ) {
-      return reply.code(503).send({ error: "Fixture quotes are available only in mock demo mode" });
+    const liveMode = (process.env.VENUES_MODE ?? "mock") === "real" && (process.env.STRATEGY_MODE ?? "mock") === "real";
+    if (!liveMode && (process.env.DEMO_MODE !== "true" || (process.env.VENUES_MODE ?? "mock") !== "mock" || (process.env.STRATEGY_MODE ?? "mock") !== "mock")) {
+      return reply.code(503).send({ error: "Use both real modes for live quotes, or mock demo mode for fixture quotes" });
     }
 
     const parsed = await deps.strategy.parseThesis(text);
@@ -73,12 +73,31 @@ export function buildApp(deps: Dependencies = {}) {
     if (!intent.success) return parsed;
 
     try {
-      const fixturePath = resolve(dirname(fileURLToPath(import.meta.url)), "../../../fixtures/b/demo-quotes.json");
-      const fixture = JSON.parse(await readFile(fixturePath, "utf8")) as { quotes?: unknown[] };
-      const quotes = (fixture.quotes ?? []).map((quote) => Quote.parse(quote));
+      let quotes: ReturnType<typeof Quote.parse>[];
+      if (liveMode) {
+        if (!deps.venues) return reply.code(503).send({ error: "Venue service is not available" });
+        const { listCalls } = await import("@ttp/venues");
+        const { L1_EXPIRY_PREFERENCE, FED_HEDGE_SYMBOL, L3B_EVENT } = await import("@ttp/strategy");
+        const venues = deps.venues;
+        const callIds = await listCalls(L1_EXPIRY_PREFERENCE);
+        const events = await venues.discoverGeminiEvents("sandbox", L3B_EVENT);
+        const sandboxIds = events.flatMap((event) => event.contracts.map((contract) => contract.instrumentSymbol));
+        const quoteRequests: Array<Promise<unknown>> = [
+          ...callIds.map((id) => venues.getQuote("DERIVE", id, "testnet")),
+          venues.getQuote("DERIVE", "BTC-PERP", "testnet"),
+          venues.getQuote("GEMINI", FED_HEDGE_SYMBOL, "mainnet"),
+          ...sandboxIds.map((id) => venues.getQuote("GEMINI", id, "sandbox")),
+        ];
+        quotes = (await Promise.all(quoteRequests)).map((quote) => Quote.parse(quote));
+      } else {
+        const fixturePath = resolve(dirname(fileURLToPath(import.meta.url)), "../../../fixtures/b/demo-quotes.json");
+        const fixture = JSON.parse(await readFile(fixturePath, "utf8")) as { quotes?: unknown[] };
+        quotes = (fixture.quotes ?? []).map((quote) => Quote.parse(quote));
+      }
       const plan = deps.strategy.buildPlan(intent.data, quotes);
       const payoff = deps.strategy.payoffGrid(plan, quotes);
       quoted.set(plan.strategyId, { plan, quotes });
+      store.savePlan(plan, quotes);
       return { plan, quotes, payoff };
     } catch (error) {
       request.log.warn({ err: error }, "Failed to build strategy quote");
@@ -87,22 +106,25 @@ export function buildApp(deps: Dependencies = {}) {
   });
 
   app.post<{ Params: { id: string }; Body: { versionHash?: string } }>("/api/strategies/:id/approve", async (request, reply) => {
-    const draft = quoted.get(request.params.id);
+    const saved = store.getPlan(request.params.id);
+    const draft = quoted.get(request.params.id) ?? (saved ? { plan: saved.plan, quotes: saved.quotes } : undefined);
     if (!draft) return reply.code(404).send({ error: "Quoted strategy not found" });
     if (request.body?.versionHash !== draft.plan.versionHash) {
       return reply.code(409).send({ error: "versionHash does not match the quoted plan" });
     }
     approvals.set(draft.plan.strategyId, draft.plan.versionHash);
+    store.approve(draft.plan.strategyId);
     return { strategyId: draft.plan.strategyId, versionHash: draft.plan.versionHash, approved: true };
   });
 
   app.post<{ Params: { id: string } }>("/api/strategies/:id/execute", async (request, reply) => {
-    const draft = quoted.get(request.params.id);
+    const saved = store.getPlan(request.params.id);
+    const draft = quoted.get(request.params.id) ?? (saved ? { plan: saved.plan, quotes: saved.quotes } : undefined);
     if (!draft) return reply.code(404).send({ error: "Quoted strategy not found" });
-    if (approvals.get(request.params.id) !== draft.plan.versionHash) {
+    if (approvals.get(request.params.id) !== draft.plan.versionHash && !saved?.approved) {
       return reply.code(409).send({ error: "Strategy needs approval for this versionHash" });
     }
-    const existing = positions.get(request.params.id);
+    const existing = positions.get(request.params.id) ?? saved?.position ?? undefined;
     if (existing) return existing;
     if (!deps.venues) return reply.code(503).send({ error: "Venue service is not available" });
     if (process.env.DEMO_MODE !== "true" || (process.env.VENUES_MODE ?? "mock") !== "mock") {
@@ -127,7 +149,23 @@ export function buildApp(deps: Dependencies = {}) {
           limitPrice: leg.limitPrice,
           reduceOnly: false,
         });
+        const prior = store.getOrder(order.clientOrderId);
+        if (prior?.order) {
+          orders.push(prior.order);
+          if (prior.order.state !== "FILLED") break;
+          continue;
+        }
+        if (prior?.state === "SUBMITTING") {
+          const recovered = await deps.venues.getOrder(order.venue, order.clientOrderId);
+          if (!recovered) throw new Error(`Order ${order.clientOrderId} has an uncertain submission; refusing to duplicate it`);
+          store.saveOrder(recovered);
+          orders.push(recovered);
+          if (recovered.state !== "FILLED") break;
+          continue;
+        }
+        store.saveSubmitting(order);
         const placed = await deps.venues.placeOrder(order);
+        store.saveOrder(placed);
         orders.push(placed);
         if (placed.state !== "FILLED") break;
       }
@@ -139,8 +177,8 @@ export function buildApp(deps: Dependencies = {}) {
     }
 
     const [mainPositions, perpPositions, margin] = await Promise.all([
-      deps.venues.getPositions("DERIBIT", "main"),
-      deps.venues.getPositions("DERIBIT", "perp"),
+      deps.venues.getPositions("DERIVE", "main"),
+      deps.venues.getPositions("DERIVE", "perp"),
       deps.venues.getMargin("perp"),
     ]);
     const snapshot = PositionSnapshot.parse({
@@ -155,19 +193,23 @@ export function buildApp(deps: Dependencies = {}) {
       updatedAt: new Date().toISOString(),
     });
     positions.set(request.params.id, snapshot);
+    store.savePosition(request.params.id, snapshot);
     return snapshot;
   });
 
   app.get<{ Params: { id: string } }>("/api/positions/:id", async (request, reply) => {
-    const position = [...positions.values()].find((item) => item.positionId === request.params.id || item.strategyId === request.params.id);
+    const position = [...positions.values()].find((item) => item.positionId === request.params.id || item.strategyId === request.params.id)
+      ?? store.getPlan(request.params.id)?.position
+      ?? null;
     if (!position) return reply.code(404).send({ error: "Position not found" });
     return position;
   });
 
   app.post<{ Params: { id: string }; Body: { shockPct?: string } }>("/api/demo/:id/shock", async (request, reply) => {
     if (process.env.DEMO_MODE !== "true") return reply.code(403).send({ error: "Shock controls are available only in demo mode" });
-    const snapshot = positions.get(request.params.id);
-    const draft = quoted.get(request.params.id);
+    const saved = store.getPlan(request.params.id);
+    const snapshot = positions.get(request.params.id) ?? saved?.position ?? undefined;
+    const draft = quoted.get(request.params.id) ?? (saved ? { plan: saved.plan, quotes: saved.quotes } : undefined);
     if (!snapshot || !draft) return reply.code(404).send({ error: "Open demo position not found" });
     if (!deps.risk || !deps.treasury || !deps.venues) return reply.code(503).send({ error: "Risk, treasury, and venue services are required" });
 
@@ -175,7 +217,7 @@ export function buildApp(deps: Dependencies = {}) {
     if (!/^-?\d+(\.\d+)?$/.test(shockPct)) return reply.code(400).send({ error: "shockPct must be a decimal string" });
     const [margin, perpPositions, treasuryStatus] = await Promise.all([
       deps.venues.getMargin("perp"),
-      deps.venues.getPositions("DERIBIT", "perp"),
+      deps.venues.getPositions("DERIVE", "perp"),
       deps.treasury.getTreasuryStatus(),
     ]);
     // Derive "BTC-PERP"; "PERP" also matches the old Deribit "*-PERPETUAL" names.
@@ -194,16 +236,16 @@ export function buildApp(deps: Dependencies = {}) {
     let transferRequest = null;
     let reduceOrder: Order | null = null;
     if ((decision.action === "RELEASE_WITHIN_LIMITS" || decision.action === "REQUEST_APPROVAL") && decision.topUpUsdc6) {
-      transferRequest = await deps.treasury.releaseWithinLimits(draft.plan.strategyId, "DERIBIT", decision.topUpUsdc6);
+      transferRequest = await deps.treasury.releaseWithinLimits(draft.plan.strategyId, "DERIVE", decision.topUpUsdc6);
       if (transferRequest.state === "REJECTED") {
-        transferRequest = await deps.treasury.requestRelease(draft.plan.strategyId, "DERIBIT", decision.topUpUsdc6, 120);
+        transferRequest = await deps.treasury.requestRelease(draft.plan.strategyId, "DERIVE", decision.topUpUsdc6, 120);
       }
       rescueRequests.set(request.params.id, transferRequest);
     } else if ((decision.action === "REDUCE_PERP" || decision.action === "CLOSE_PERP") && perp && decision.reduceQtyBtc) {
-      const quote = await deps.venues.getQuote("DERIBIT", perp.instrumentId, "testnet");
+      const quote = await deps.venues.getQuote("DERIVE", perp.instrumentId, "testnet");
       if (quote.bid) reduceOrder = await deps.venues.placeOrder(OrderRequest.parse({
         clientOrderId: `${draft.plan.strategyId}-rescue-${Date.now()}`, strategyId: draft.plan.strategyId, legId: "L2",
-        venue: "DERIBIT", account: "perp", instrumentId: perp.instrumentId, side: "SELL", quantity: decision.reduceQtyBtc,
+        venue: "DERIVE", account: "perp", instrumentId: perp.instrumentId, side: "SELL", quantity: decision.reduceQtyBtc,
         limitPrice: quote.bid, reduceOnly: true,
       }));
     }
@@ -222,6 +264,28 @@ export function buildApp(deps: Dependencies = {}) {
       return updated;
     } catch (error) {
       return reply.code(404).send({ error: error instanceof Error ? error.message : "Unknown approval request" });
+    }
+  });
+
+  app.get<{ Params: { id: string } }>("/api/treasury/requests/:id", async (request, reply) => {
+    if (!deps.treasury) return reply.code(503).send({ error: "Treasury service is not available" });
+    try {
+      return await deps.treasury.getReleaseStatus(request.params.id);
+    } catch (error) {
+      return reply.code(404).send({ error: error instanceof Error ? error.message : "Unknown release request" });
+    }
+  });
+
+  app.post<{ Params: { id: string } }>("/api/treasury/requests/:id/decline", async (request, reply) => {
+    if (!deps.treasury) return reply.code(503).send({ error: "Treasury service is not available" });
+    try {
+      const result = deps.decideMockRequest && process.env.DEMO_MODE === "true" && (process.env.TREASURY_MODE ?? "mock") === "mock"
+        ? deps.decideMockRequest(request.params.id, false)
+        : await deps.treasury.cancelRequest(request.params.id);
+      for (const [positionId, item] of rescueRequests) if (item.requestId === request.params.id) rescueRequests.set(positionId, result);
+      return result;
+    } catch (error) {
+      return reply.code(404).send({ error: error instanceof Error ? error.message : "Unable to decline request" });
     }
   });
 

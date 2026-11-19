@@ -5,7 +5,10 @@ import { mock as treasury, resetMock, simulateOwnerDecision } from "../packages/
 import { strategy } from "../packages/strategy/src/index";
 import { buildApp } from "../apps/api/src/app";
 
-process.env.DEMO_MODE ??= "true";
+process.env.DEMO_MODE = "true";
+process.env.VENUES_MODE = "mock";
+process.env.STRATEGY_MODE = "mock";
+process.env.DATABASE_PATH = ":memory:";
 resetMock();
 const app = buildApp({ strategy, venues: createMockVenues(), treasury, risk, decideMockRequest: simulateOwnerDecision });
 const request = async <T>(url: string, payload?: unknown): Promise<T> => {

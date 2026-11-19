@@ -24,6 +24,7 @@ async function openDemoPosition() {
   process.env.TREASURY_MODE = "mock";
   process.env.VENUES_MODE = "mock";
   process.env.STRATEGY_MODE = "mock";
+  process.env.DATABASE_PATH = ":memory:";
   resetMock();
   const venues = createMockVenues();
   const app = buildApp({ strategy, venues, treasury: treasuryMock, risk: { evaluateRisk }, decideMockRequest: simulateOwnerDecision });

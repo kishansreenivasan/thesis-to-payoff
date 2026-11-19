@@ -9,7 +9,9 @@ Updated 2026-11-18. The full checklist with history is GitHub issue #1. Tick ite
 
 ## Next, in order
 
-1. **Fund the Arc vault with about 150 test USDC.**
+0. **Finish local real-mode setup.** The project `.env` has Gemini and Arc credentials, but the current Derive fields are empty: `DERIVE_WALLET`, `DERIVE_SIGNER_PRIVATE_KEY`, `DERIVE_MAIN_SUBACCOUNT_ID`, `DERIVE_PERP_SUBACCOUNT_ID`. Real public quotes work; authenticated order and margin calls do not yet.
+
+1. **Fund the Arc vault with about 150 test USDC.** A read-only precheck on 2026-11-19 found 22 USDC in the vault (12 releasable above its reserve floor) and $100 needed for the rehearsal flow.
    - **Why:** it holds about 22 USDC. The demo needs up to 100 USDC above its 10 USDC floor: the allowed 20 USDC release plus an approved request.
    - **Where:** vault `0x1e9B755C7caA3d1D007d70A7cF77E93cc6A65E07` on Arc testnet (chain 5042002). Explorer: https://explorer.testnet.arc.io/address/0x1e9B755C7caA3d1D007d70A7cF77E93cc6A65E07
    - **How:** get test USDC at https://faucet.circle.com (Arc testnet), then send about 150 from your Arc wallet to the vault address.
