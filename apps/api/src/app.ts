@@ -48,7 +48,11 @@ export function buildApp(deps: Dependencies = {}) {
     return saved;
   };
 
-  const liveMode = () => process.env.DEMO_MODE !== "true" && process.env.VENUES_MODE === "real" && process.env.STRATEGY_MODE === "real";
+  // Live = real venue and strategy modes. DEMO_MODE only adds the shock/reset controls; with live
+  // venues those controls place real testnet orders, so they need the operator bearer token.
+  const liveMode = () => process.env.VENUES_MODE === "real" && process.env.STRATEGY_MODE === "real";
+  const demoMode = () => process.env.DEMO_MODE === "true";
+  const demoShocks = new Map<string, string>();
   const hasBearer = (authorization?: string) => {
     const token = process.env.MCP_BEARER_TOKEN;
     if (!token || !authorization?.startsWith("Bearer ")) return false;
@@ -168,11 +172,11 @@ export function buildApp(deps: Dependencies = {}) {
     const existing = positions.get(request.params.id) ?? saved?.position ?? undefined;
     if (existing) return existing;
     if (!deps.venues) return reply.code(503).send({ error: "Venue service is not available" });
-    const mockExecution = process.env.DEMO_MODE === "true" && (process.env.VENUES_MODE ?? "mock") === "mock";
+    const mockExecution = demoMode() && (process.env.VENUES_MODE ?? "mock") === "mock";
     const liveExecution = liveMode();
     if (liveExecution && !hasBearer(request.headers.authorization)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
     if (!mockExecution && !liveExecution) {
-      return reply.code(503).send({ error: "Execution requires mock demo mode or both real venue and strategy modes with DEMO_MODE disabled" });
+      return reply.code(503).send({ error: "Execution requires mock demo mode or both real venue and strategy modes" });
     }
 
     if (liveExecution) {
@@ -198,7 +202,7 @@ export function buildApp(deps: Dependencies = {}) {
         .sort((a, b) => executionOrder.indexOf(a.legId) - executionOrder.indexOf(b.legId));
       for (const leg of realLegs) {
         const order = OrderRequest.parse({
-          clientOrderId: `${draft.plan.strategyId}-${draft.plan.revision}-${leg.legId}`,
+          clientOrderId: `${draft.plan.strategyId}-${draft.plan.revision}-r${store.runId()}-${leg.legId}`,
           strategyId: draft.plan.strategyId,
           legId: leg.legId,
           venue: leg.venue,
@@ -258,6 +262,10 @@ export function buildApp(deps: Dependencies = {}) {
     recordEvent({ timestamp: snapshot.updatedAt, positionId: snapshot.positionId, type: "POSITION_UPDATED", reasonCode: snapshot.state, details: { strategyId: snapshot.strategyId, state: snapshot.state, orders: snapshot.orders.length }, source: liveExecution ? "TESTNET" : "SIMULATED" });
     return snapshot;
   });
+
+  app.get("/api/positions", async () => store.listPositions()
+    .map(({ position }) => position)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
 
   app.get<{ Params: { id: string } }>("/api/positions/:id", async (request, reply) => {
     const position = [...positions.values()].find((item) => item.positionId === request.params.id || item.strategyId === request.params.id)
@@ -325,14 +333,17 @@ export function buildApp(deps: Dependencies = {}) {
       }
     }
     riskStates.set(strategyId, decision.nextState);
-    const updated = PositionSnapshot.parse({ ...snapshot, riskState: decision.nextState, margins: [margin], updatedAt: new Date().toISOString() });
+    // After a reduce-only order, re-read the venue so the gauge shows the recovered margin (Section 16 step 8).
+    const latestMargin = reduceOrder ? await deps.venues.getMargin("perp").catch(() => margin) : margin;
+    const orders = reduceOrder ? [...snapshot.orders.filter((item) => item.clientOrderId !== reduceOrder!.clientOrderId), reduceOrder] : snapshot.orders;
+    const updated = PositionSnapshot.parse({ ...snapshot, riskState: decision.nextState, orders, margins: [latestMargin], updatedAt: new Date().toISOString() });
     positions.set(strategyId, updated);
     store.savePosition(strategyId, updated);
     recordEvent({ timestamp: updated.updatedAt, positionId: updated.positionId, type: "RISK_DECISION", reasonCode: decision.reasonCode, details: { ...decision, explanation: decision.explanation }, source: decision.projectedSource });
-    return { margin, projectedRatio: decision.projectedRatio, projectedSource: decision.projectedSource, decision, transferRequest, reduceOrder };
+    return { margin: latestMargin, projectedRatio: decision.projectedRatio, projectedSource: decision.projectedSource, decision, transferRequest, reduceOrder };
   }
 
-  if (liveMode() && deps.risk && deps.treasury && deps.venues) {
+  if (liveMode() && !demoMode() && deps.risk && deps.treasury && deps.venues) {
     monitorTimer = setInterval(() => {
       for (const { strategyId, position } of store.listPositions()) {
         if (position.state === "OPEN" || position.state === "PARTIAL") {
@@ -365,12 +376,43 @@ export function buildApp(deps: Dependencies = {}) {
   });
 
   app.post<{ Params: { id: string }; Body: { shockPct?: string } }>("/api/demo/:id/shock", async (request, reply) => {
-    if (process.env.DEMO_MODE !== "true") return reply.code(403).send({ error: "Shock controls are available only in demo mode" });
+    if (!demoMode()) return reply.code(403).send({ error: "Shock controls are available only in demo mode" });
+    if (liveMode() && !hasBearer(request.headers.authorization)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
     const shockPct = request.body?.shockPct ?? "-8";
     if (!/^-?\d+(\.\d+)?$/.test(shockPct)) return reply.code(400).send({ error: "shockPct must be a decimal string" });
+    demoShocks.set(request.params.id.startsWith("pos_") ? request.params.id.slice(4) : request.params.id, shockPct);
     try { return await monitorPosition(request.params.id, shockPct); }
     catch (error) { return reply.code(503).send({ error: error instanceof Error ? error.message : "Shock evaluation failed" }); }
   });
+
+  // Demo reset (Section 17): clears the orchestrator's plans, orders, events and risk state and
+  // starts a new run id, so the next demo:open sends fresh client order ids. It does not touch
+  // venue positions or the vault.
+  app.post("/api/demo/reset", async (request, reply) => {
+    if (!demoMode()) return reply.code(403).send({ error: "Reset is available only in demo mode" });
+    if (liveMode() && !hasBearer(request.headers.authorization)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
+    quoted.clear(); approvals.clear(); positions.clear(); rescueRequests.clear(); riskStates.clear(); demoShocks.clear();
+    const runId = store.reset();
+    return { ok: true, runId };
+  });
+
+  // After a decision on a rescue request, run one monitor tick at the shock the demo is holding,
+  // so a decline leads straight to the reduce-only order (Section 16 step 8).
+  const recordDecision = (item: TransferRequest) => recordEvent({
+    timestamp: new Date().toISOString(), positionId: `pos_${item.strategyId}`, type: "TRANSFER_REQUEST_UPDATED",
+    reasonCode: item.state, details: item, source: item.source,
+  });
+
+  const followUp = async (requestId: string) => {
+    for (const [strategyId, item] of rescueRequests) {
+      if (item.requestId !== requestId) continue;
+      const shock = demoShocks.get(strategyId);
+      if (!demoMode() || shock === undefined) return null;
+      try { return await monitorPosition(strategyId, shock); }
+      catch (error) { app.log.error({ err: error, strategyId }, "Follow-up monitor failed"); return null; }
+    }
+    return null;
+  };
 
   app.post<{ Params: { id: string }; Body: { approved?: boolean } }>("/api/treasury/requests/:id/decision", async (request, reply) => {
     if (!deps.decideMockRequest || process.env.DEMO_MODE !== "true" || (process.env.TREASURY_MODE ?? "mock") !== "mock") {
@@ -380,7 +422,9 @@ export function buildApp(deps: Dependencies = {}) {
     try {
       const updated = deps.decideMockRequest(request.params.id, request.body.approved);
       for (const [positionId, item] of rescueRequests) if (item.requestId === request.params.id) rescueRequests.set(positionId, updated);
-      return updated;
+      recordDecision(updated);
+      const followUpResult = request.body.approved ? null : await followUp(request.params.id);
+      return { ...updated, followUp: followUpResult };
     } catch (error) {
       return reply.code(404).send({ error: error instanceof Error ? error.message : "Unknown approval request" });
     }
@@ -403,7 +447,8 @@ export function buildApp(deps: Dependencies = {}) {
         ? deps.decideMockRequest(request.params.id, false)
         : await deps.treasury.cancelRequest(request.params.id);
       for (const [positionId, item] of rescueRequests) if (item.requestId === request.params.id) rescueRequests.set(positionId, result);
-      return result;
+      recordDecision(result);
+      return { ...result, followUp: await followUp(request.params.id) };
     } catch (error) {
       return reply.code(404).send({ error: error instanceof Error ? error.message : "Unable to decline request" });
     }
@@ -412,7 +457,9 @@ export function buildApp(deps: Dependencies = {}) {
   app.get("/api/treasury", async (_request, reply) => {
     if (!deps.treasury) return reply.code(503).send({ error: "Treasury service is not available" });
     const openRequests = [...rescueRequests.values()].filter((item) => ["REQUESTED", "OWNER_APPROVAL_NEEDED", "OWNER_APPROVED"].includes(item.state));
-    return { status: await deps.treasury.getTreasuryStatus(), openRequests };
+    const base = (process.env.PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
+    const requests = [...rescueRequests.values()].map((item) => ({ ...item, approvalUrl: `${base}/approve/${item.requestId}` }));
+    return { status: await deps.treasury.getTreasuryStatus(), openRequests, requests };
   });
 
   app.post("/mcp", async (request, reply) => {
@@ -441,7 +488,15 @@ export function buildApp(deps: Dependencies = {}) {
       quotePayoff: (text) => apiPost("/api/strategies/quote", { text }),
       approveStrategy: (strategyId, versionHash) => apiPost(`/api/strategies/${encodeURIComponent(strategyId)}/approve`, { versionHash }),
       executeStrategy: (strategyId) => apiPost(`/api/strategies/${encodeURIComponent(strategyId)}/execute`),
-      positionStatus: (id) => apiGet(`/api/positions/${encodeURIComponent(id)}`),
+      positionStatus: async (id) => {
+        const position = id
+          ? await apiGet<{ positionId: string }>(`/api/positions/${encodeURIComponent(id)}`)
+          : (await apiGet<Array<{ positionId: string }>>("/api/positions"))[0] ?? null;
+        const treasury = deps.treasury ? await apiGet<{ requests: Array<{ strategyId: string; state: string }> }>("/api/treasury").catch(() => null) : null;
+        const strategyId = position?.positionId.replace(/^pos_/, "");
+        const approvalRequests = (treasury?.requests ?? []).filter((item) => item.strategyId === strategyId);
+        return { position, approvalRequests, note: position ? undefined : "No open position yet." };
+      },
       transferRequestStatus: (requestId) => apiGet(`/api/treasury/requests/${encodeURIComponent(requestId)}`),
     });
     const transport = new NodeStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
