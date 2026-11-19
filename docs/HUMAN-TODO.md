@@ -24,7 +24,7 @@ Updated 2026-11-19. The full checklist with history is GitHub issue #1. Lane A/B
    - Add both to the host's settings and to `.env`.
 3. **Grok Bot.** Get access. When Lane C says the MCP server is live, add it in Grok as a custom connector (URL plus bearer token).
 4. **Complete the remaining technical handoffs.**
-   - **Lane C:** implement and host the MCP HTTP transport, then deploy API + web + MCP after the hosting URL and bearer token are available.
+   - **Lane C:** finish the execution coordinator and monitoring/event loop; implement MCP HTTP transport; then deploy API + web + MCP after the hosting URL and bearer token are available. Authenticated order integration needs the Derive testnet credentials above.
    - **Lane A:** run live `calibrate` after Derive credentials are configured and the perp is open.
    - **Lane B:** check whether Gemini sandbox lists `FED261211`; record the result in `STATUS.md`.
 5. **Judging.** Confirm who attends in person on Sat Nov 21. No one there means no prize.

@@ -11,8 +11,10 @@ Spec: DESIGN.md Sections 4 (Lane C), 5, 8 (monitoring loop), 9, 10, 11, 16, 17. 
 The Lane C handoff work C1-C8 is merged into `main` in [PR #23](https://github.com/kishansreenivasan/thesis-to-payoff/pull/23). Lane A and Lane B implementation branches are already ancestors of `main`; no additional code from those branches needs to be cherry-picked.
 
 - C1-C8: implemented and merged. Live venue validation used public/read-only quotes; authenticated Derive trading is not configured locally.
-- C9: open. The compile-thesis tool schema/handler exists, but the hosted MCP HTTP transport and deployment remain to be built/configured. Needs a host URL and bearer token.
+- C9: open. The compile-thesis tool schema/handler exists, but the MCP HTTP transport and deployment remain to be built/configured. Needs a host URL and bearer token.
 - C10: partially complete. Arc precheck ran on 2026-11-19: 22 USDC balance, 12 USDC above reserve floor, versus up to 100 USDC needed for the rehearsal. Live calibration still needs Derive signing credentials and an open perp.
+
+Other Lane C scope still open: the 10-second monitoring/event loop and authenticated order coordination. These can be built against mocks while live credentials and hosting are pending.
 
 Do any follow-up work on a branch based on the latest `main`.
 
