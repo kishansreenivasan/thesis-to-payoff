@@ -9,7 +9,7 @@
 - Live demo: https://ttp-production-7410ea00.up.railway.app
 - Logo: [selected Convex logo](../apps/web/public/convex-logo.png)
 - MCP connector: `https://ttp-production-7410ea00.up.railway.app/mcp` (bearer authentication; never publish the token)
-- Video: TODO — record and add the final URL; [timed narration and capture guide](VIDEO.md) prepared
+- Video: [recorded 3:29 MP4](../evidence/convex-walkthrough-2026-11-20.mp4); voiceover and a public video-host URL remain pending. [Recording details and receipts](VIDEO.md).
 - Vault: [Arc testnet deployment](https://explorer.testnet.arc.io/address/0x1e9B755C7caA3d1D007d70A7cF77E93cc6A65E07)
 - Grok chat: [verified read-only conversation transcript](../evidence/grok-chat-2026-11-19.md); [repeat setup / handoff](GROK-HANDOFF.md)
 
@@ -69,7 +69,7 @@ Those lessons shaped Convex around deterministic calculations, explicit approval
 
 ## What's next for Convex
 
-Our immediate priorities are final screenshots and video, and a fresh staged demo when sandbox liquidity and treasury funding permit. The Grok connector is configured and read-only thesis/status acceptance is recorded; showing a pending request in Grok remains a staged-demo check. Hosted MCP access is already configured; no new xAI API key is required.
+Our immediate priorities are voiceover and uploading the recorded walkthrough to a video host. The video includes a new three-leg execution from November 20; another entry/exit run depends on sandbox liquidity, and the full approved-release path needs treasury funding. The Grok connector is configured and read-only thesis/status acceptance is recorded; showing a pending request in Grok remains a staged-demo check. Hosted MCP access is already configured; no new xAI API key is required.
 
 Next we would improve strategy explanations and scenario comparison, add risk alerts and validate additional supported strategies and instruments. Any cross-venue funding capability would require a separate integration; this prototype's Arc vault does not fund either venue.
 
@@ -78,6 +78,7 @@ Next we would improve strategy explanations and scenario comparison, add risk al
 The `/history` walkthrough presents saved November 19 execution evidence, with the run date and source labels visible. It performs no trading and enables video capture while fresh sandbox execution is liquidity-constrained. This follow-up is prepared on `finish/video-replay`; verify deployment before sharing its hosted URL.
 
 - [Open](../evidence/rehearsal-2026-11-19-open.json) / [reopen](../evidence/rehearsal-2026-11-19-reopen.json): filled sandbox and testnet legs.
+- [November 20 video execution](../evidence/video-2026-11-20-open.json): all three executable legs filled from the homepage; position remains OPEN. The [MP4](../evidence/convex-walkthrough-2026-11-20.mp4) shows the dated history followed by this separate new execution.
 - [Calibration](../evidence/rehearsal-2026-11-19-calibrate.txt): a real margin read with a simulated -15% stress projecting a 1.3226 ratio.
 - [Rescue](../evidence/rehearsal-2026-11-19-rescue.json): Arc request/cancel and filled reduce-only order.
 - [Demo/video runbook](DEMO-SCRIPT.md): preserve existing positions when liquidity is scarce.

@@ -2,7 +2,7 @@
 
 ## Recorded walkthrough — November 20
 
-A silent 1920×1080 MP4 was captured from the actual local dashboard at a readable pace. Duration: **3:29**. The six history stages each hold for 10 seconds, followed by a new homepage strategy, approval, execution and venue receipts. The local file is `output/convex-video/convex-walkthrough-2026-11-20.mp4` in the chat workspace, outside this repository. It has not been uploaded.
+A silent 1920×1080 MP4 was captured from the actual local dashboard at a readable pace. Duration: **3:29**. The six history stages each hold for 10 seconds, followed by a new homepage strategy, approval, execution and venue receipts. The [finished MP4](../evidence/convex-walkthrough-2026-11-20.mp4) is included in the repository; a copy remains in the chat workspace at `output/convex-video/convex-walkthrough-2026-11-20.mp4`. Upload to a video host for the Devpost submission remains pending.
 
 The fresh strategy used “Bullish BTC into December, worried the Fed hikes more than expected on Dec 11. Max risk $500.” The first execution attempt stopped before sending orders because the option price exceeded its approved limit. After refreshing and approving the new plan, all three executable legs filled at 10:17 UTC:
 
@@ -70,4 +70,4 @@ You can also use the actual Grok acceptance chat, which invoked `compile_thesis`
 3. Stop after the closing line. Trim the beginning/end; keep the execution date and modeling explanation visible.
 4. Upload the video and check that it plays while signed out. Add its URL to the Devpost form and `docs/DEVPOST.md`.
 
-The silent walkthrough is recorded locally. Voiceover and upload remain; a new opening requires fresh Gemini entry liquidity, and the full approved-release path still needs vault funding. Opening the strategy itself does not require an Arc release.
+The silent walkthrough is recorded and included in the repository. Voiceover and upload to a video host remain; a new opening requires fresh Gemini entry liquidity, and the full approved-release path still needs vault funding. Opening the strategy itself does not require an Arc release.

@@ -1,5 +1,10 @@
 # CHANGES
 
+## 2026-11-20 — Sid: package the finished video for the branch push
+
+- Added the final 3:29 MP4 to `evidence/`, alongside the source-labeled execution receipts. Updated the video and Devpost drafts to link it and distinguish repository availability from the pending video-host upload.
+- Push scope: all checkpoints on `finish/video-replay`, including the interface, entry/exit controls, automatic local access, documentation and video. Environment secrets and local runtime databases remain ignored.
+
 ## 2026-11-20 — Sid: capture walkthrough and fresh three-leg execution
 
 - Recorded all six history stages for 10 seconds each, then used the homepage's Fed-hike thesis to build, approve and execute a new position. Saved a 3:29 silent 1080p video outside the repository.
