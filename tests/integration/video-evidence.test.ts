@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Order, StrategyPlan, TransferRequest } from "@ttp/shared";
-import { demo } from "../../apps/web/app/replay/evidence";
+import { demo } from "../../apps/web/app/history/evidence";
 
 describe("video demo evidence", () => {
   it("uses matching real receipts for the complete open, request and reduce-only flow", () => {

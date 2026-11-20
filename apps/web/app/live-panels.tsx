@@ -14,31 +14,38 @@ type Treasury = { status: { vaultAddress: string; balanceUsdc6: string; perTxCap
 type Health = { demoMode: boolean; modes: Record<string, string> };
 type Event = { seq: number; timestamp: string; type: string; reasonCode: string | null; details: Record<string, unknown>; source: string };
 type ShockResult = { projectedRatio: string; projectedSource: string; decision: { action: string; explanation: string; nextState: string } };
+type CloseResult = { position: Position; results: Array<{ legId: string; instrumentId: string; state: string; remainingQuantity: string | null; error: string | null }>; requestError: string | null };
 
 const usdc = (v6: string) => (Number(v6) / 1_000_000).toFixed(2);
 
 export function LivePanels() {
   const [health, setHealth] = useState<Health | null>(null);
   const [position, setPosition] = useState<Position | null>(null);
+  const [portfolio, setPortfolio] = useState<Position[]>([]);
+  const [selectedStrategy, setSelectedStrategy] = useState("");
   const [treasury, setTreasury] = useState<Treasury | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [shock, setShock] = useState<ShockResult | null>(null);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [token, setToken] = useState("");
+  const [confirmClose, setConfirmClose] = useState("");
+  const [closeResult, setCloseResult] = useState<CloseResult | null>(null);
 
   const refresh = useCallback(async () => {
     try {
       const [h, list] = await Promise.all([api<Health>("/api/health"), api<Position[]>("/api/positions")]);
       setHealth(h);
-      setPosition(list[0] ?? null);
+      setPortfolio(list);
+      setPosition(list.find((item) => item.strategyId === selectedStrategy) ?? list[0] ?? null);
       setTreasury(await api<Treasury>("/api/treasury").catch(() => null));
     } catch (e) { setError(e instanceof Error ? e.message : "Could not reach the API."); }
-  }, []);
+  }, [selectedStrategy]);
 
   useEffect(() => { setToken(getOperatorToken()); void refresh(); const t = setInterval(() => void refresh(), 5000); return () => clearInterval(t); }, [refresh]);
 
   const positionId = position?.positionId;
+  useEffect(() => { setConfirmClose(""); setCloseResult(null); setShock(null); }, [positionId]);
   useEffect(() => {
     if (!positionId) { setEvents([]); return; }
     setEvents([]);
@@ -59,7 +66,14 @@ export function LivePanels() {
     if (!position) throw new Error("Open a position before applying a stress scenario.");
     setShock(await api<ShockResult>(`/api/demo/${position.strategyId}/shock`, { method: "POST", body: { shockPct: pct } }));
   });
-  const doReset = () => run("Reset", async () => { await api("/api/demo/reset", { method: "POST" }); setShock(null); setEvents([]); });
+  const doReset = () => run("Clearing workspace", async () => { await api("/api/demo/reset", { method: "POST" }); setShock(null); setEvents([]); });
+  const doClose = () => run("Closing positions", async () => {
+    if (!position || confirmClose !== position.strategyId) throw new Error("The selected position changed. Review it before confirming the exit.");
+    const result = await api<CloseResult>(`/api/positions/${confirmClose}/close`, { method: "POST" });
+    setCloseResult(result);
+    setPosition(result.position);
+    setConfirmClose("");
+  });
 
   const margin = position?.margins.find((m) => m.account === "perp") ?? position?.margins[0];
   // The latest risk decision in the log (it may come from a follow-up after the owner declines).
@@ -68,29 +82,34 @@ export function LivePanels() {
     ? { projectedRatio: lastDecision.details.projectedRatio, projectedSource: String(lastDecision.details.projectedSource ?? "SIMULATED"), decision: { action: String(lastDecision.details.action ?? ""), explanation: String(lastDecision.details.explanation ?? ""), nextState: String(lastDecision.details.nextState ?? "") } }
     : shock;
   const live = health?.modes.venues === "real";
+  const savedExit = [...events].reverse().find((event) => event.type === "POSITION_CLOSE_UPDATED");
+  const exit = closeResult ?? (savedExit?.details as Omit<CloseResult, "position"> | undefined);
 
   return <>
     {health?.demoMode && <section style={{ ...card, marginTop: 18 }}>
-      <h2>Demo controls</h2>
+      <h2>Risk controls</h2>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <button disabled={!!busy || !position} onClick={() => void doShock("-8")}>Shock BTC -8%</button>
         <button disabled={!!busy || !position} onClick={() => void doShock("-15")}>Shock BTC -15%</button>
-        <button disabled={!!busy} onClick={() => void doReset()}>Reset</button>
+        <button disabled={!!busy || portfolio.some((item) => item.state !== "CLOSED")} onClick={() => void doReset()} title="Close all positions before clearing workspace history">Clear workspace</button>
         {busy && <span>{busy}…</span>}
       </div>
-      <p style={{ color: "#a4b5bd", fontSize: 13 }}>The shock is a hypothetical price move used for a modeled stress projection. Any orders or Arc transactions it triggers use demo networks.</p>
-      {live && <details><summary>Operator token {token ? "(set in this browser)" : "(needed for live controls)"}</summary>
-        <input type="password" placeholder="MCP bearer token" value={token} onChange={(e) => setToken(e.target.value)} style={{ ...input, width: 320 }} />
-        <button onClick={() => setOperatorToken(token)} style={{ marginLeft: 8 }}>Save</button>
-      </details>}
-      {error && <p role="alert" style={{ color: "#ffb489" }}>{error}</p>}
+      <p style={{ color: "#a4b5bd", fontSize: 13 }}>The shock is a hypothetical price move used for a modeled stress projection. It changes the projection, not the reported venue balance.</p>
     </section>}
 
     <section style={{ ...card, marginTop: 18 }}>
-      <h2>Venues and margin</h2>
-      {!position ? <div className="empty-state">No active position. Start with your thesis above, or <a href="/replay">explore the completed demo</a>.</div> : <>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}><h2 style={{ marginBottom: 0 }}>Venues and margin</h2><button disabled={!!busy || !position || position.state === "CLOSED"} onClick={() => { if (position) { setSelectedStrategy(position.strategyId); setConfirmClose(position.strategyId); } }} style={{ background: "transparent", borderColor: "#ffb489", color: "#ffb489" }}>{busy === "Closing positions" ? "Closing…" : position?.state === "REDUCING" ? "Retry remaining exits" : "Close positions"}</button></div>
+      {portfolio.length > 1 && <label style={{ display: "block", marginTop: 16 }}>Position <select aria-label="Choose position" style={{ ...input, marginLeft: 12 }} value={position?.strategyId ?? ""} onChange={(event) => { setSelectedStrategy(event.target.value); setPosition(portfolio.find((item) => item.strategyId === event.target.value) ?? null); }}>{portfolio.map((item) => <option key={item.strategyId} value={item.strategyId}>{item.strategyId} · {item.state}</option>)}</select></label>}
+      {live && <details><summary>Trading access {token ? "(saved in this browser)" : "(required for position actions)"}</summary>
+        <input aria-label="Trading access token" type="password" placeholder="Access token" value={token} onChange={(e) => setToken(e.target.value)} style={{ ...input, width: 320, maxWidth: "100%" }} />
+        <button onClick={() => setOperatorToken(token)} style={{ marginLeft: 8 }}>Save</button>
+      </details>}
+      {confirmClose && <div style={{ ...card, marginTop: 16, borderColor: "#ffb489" }}><h3>Close this strategy’s positions?</h3><p>Cancel outstanding strategy orders and sell its remaining held legs, starting with the perpetual. Fills depend on available liquidity; any unfilled legs will stay visible for retry. This does not withdraw funds from your venue accounts.</p><div style={{ display: "flex", gap: 12 }}><button disabled={!!busy} onClick={() => void doClose()}>Confirm close</button><button disabled={!!busy} onClick={() => setConfirmClose("")} style={{ background: "transparent", color: "#a4b5bd", borderColor: "#33464f" }}>Keep positions</button></div></div>}
+      {exit && <div role="status" className="empty-state" style={{ marginTop: 16 }}><b>{position?.state === "CLOSED" ? "Positions closed" : "Exit needs attention"}</b><ul>{(exit.results ?? []).map((result) => <li key={result.legId}>{result.legId} · {result.instrumentId} · {result.state}{result.remainingQuantity !== null ? ` · remaining ${result.remainingQuantity}` : ""}{result.error ? ` — ${result.error}` : ""}</li>)}</ul>{exit.requestError && <p>Funding request cancellation needs attention: {exit.requestError}</p>}</div>}
+      {error && <p role="alert" style={{ color: "#ffb489" }}>{error}</p>}
+      {!position ? <div className="empty-state">No active position. Start with your thesis above, or <a href="/history">view execution history</a>.</div> : <>
         <p><b>{position.positionId}</b> · state {position.state} · risk {position.riskState}</p>
-        {margin && <MarginGauge margin={margin} shock={latestShock} />}
+        {margin && position.state !== "CLOSED" && <MarginGauge margin={margin} shock={latestShock} />}
         <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%", fontSize: 14 }}>
           <thead><tr>{["Leg", "Venue", "Instrument", "Side", "Qty", "Filled", "Avg price", "State", "Venue order id"].map((h) => <th key={h} style={th}>{h}</th>)}</tr></thead>
           <tbody>{position.orders.map((o) => <tr key={o.clientOrderId}>
@@ -128,7 +147,7 @@ export function LivePanels() {
 
     <section style={{ ...card, marginTop: 18 }}>
       <h2>Activity log</h2>
-      {events.length === 0 ? <p className="empty-state">Your execution and risk decisions will appear here, with a source for every event.</p> : <ol style={{ paddingLeft: 18, margin: 0 }}>{events.map((e) => <li key={e.seq} style={{ marginBottom: 8 }}>
+      {events.length === 0 ? <p className="empty-state">Your orders, approvals and risk decisions will appear here.</p> : <ol style={{ paddingLeft: 18, margin: 0 }}>{events.map((e) => <li key={e.seq} style={{ marginBottom: 8 }}>
         <span style={{ color: "#a4b5bd", fontSize: 12 }}>{new Date(e.timestamp).toLocaleTimeString()}</span>{" "}
         <b>{e.type}</b>{e.reasonCode ? ` · ${e.reasonCode}` : ""}
         <div style={{ fontSize: 13 }}>{describe(e)}</div>

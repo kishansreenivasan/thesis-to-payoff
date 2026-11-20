@@ -43,7 +43,7 @@ export default function ApprovePage() {
     try {
       const call = buildApproveRequestCall(requestId);
       writeContract({ address: call.address, abi: call.abi, functionName: call.functionName, args: call.args, chainId: call.chainId });
-      setMessage("Confirm the Arc testnet transaction in your wallet.");
+      setMessage("Confirm the Arc transaction in your wallet.");
     } catch (e) { setMessage(e instanceof Error ? e.message : "Could not prepare approval."); }
   };
   const decline = async () => {
@@ -53,7 +53,7 @@ export default function ApprovePage() {
       setRequest(body);
       const order = body.followUp?.reduceOrder;
       setMessage(order
-        ? `Request declined. Agent placed a reduce-only order on the Derive perp: ${order.state}, venue order ${order.venueOrderId ?? "pending"} (source ${order.source}).`
+        ? `Request declined. Agent placed a reduce-only order on the Derive perp: ${order.state}, venue order ${order.venueOrderId ?? "pending"}.`
         : `Request declined. ${body.followUp?.decision?.explanation ?? "The agent will follow its reduce-only rescue path if needed."}`);
     } catch (e) { setMessage(e instanceof Error ? e.message : "Could not decline request."); }
   };
@@ -61,7 +61,7 @@ export default function ApprovePage() {
   return (
     <main style={{ ...card, maxWidth: 680, margin: "48px auto", padding: 28 }}>
       <Link href="/" style={{ color: "#00d6b4", fontWeight: 700 }}>Convex · dashboard</Link>
-      <p style={{ color: "#a4b5bd", textTransform: "uppercase", letterSpacing: 1 }}>Arc testnet · owner approval</p>
+      <p style={{ color: "#a4b5bd", textTransform: "uppercase", letterSpacing: 1 }}>Arc · owner approval</p>
       <h1>Review treasury request</h1>
       {request ? <dl style={{ display: "grid", gridTemplateColumns: "150px 1fr", gap: 12, overflowWrap: "anywhere" }}>
         <dt>Amount</dt><dd>{(Number(request.amountUsdc6) / 1_000_000).toFixed(2)} USDC</dd>
@@ -73,7 +73,7 @@ export default function ApprovePage() {
         <dt>Source</dt><dd>{request.source}</dd>
       </dl> : <p>Loading request…</p>}
       {!isConnected ? <button disabled={connecting} onClick={() => connectors[0] && connect({ connector: connectors[0] })}>Connect owner wallet</button> : <p>Connected: {address}</p>}
-      {isConnected && chainId !== arcTestnet.id && <button disabled={switching} onClick={() => switchChain({ chainId: arcTestnet.id })}>Switch to Arc testnet</button>}
+      {isConnected && chainId !== arcTestnet.id && <button disabled={switching} onClick={() => switchChain({ chainId: arcTestnet.id })}>Switch to Arc</button>}
       <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
         <button disabled={!isConnected || chainId !== arcTestnet.id || approving || !request} onClick={approve}>Approve on Arc</button>
         <button disabled={!request || ["ARC_FINALIZED", "REJECTED", "EXPIRED"].includes(request.state)} onClick={decline}>Decline</button>

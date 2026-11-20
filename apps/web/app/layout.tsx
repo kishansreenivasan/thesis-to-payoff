@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata = {
   title: "Convex",
-  description: "Turn a supported BTC thesis into a coordinated strategy across options, perpetuals, and prediction markets on testnet and sandbox.",
+  description: "Turn a supported BTC thesis into a coordinated strategy across options, perpetuals, and prediction markets with onchain spending controls.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
