@@ -1,5 +1,11 @@
 # CHANGES
 
+## 2026-11-20 — Sid: simplify demo labels
+
+- At the user's request, removed the source badge UI and environment header tag from the dashboard and evidence walkthrough, including the testnet/simulated pills. Execution dates, receipts and short explanations of modeled values remain visible. API source fields and evidence files are unchanged.
+- Strategy lifecycle gap identified: the current frontend quotes plans but has no approve/execute buttons; MCP exposes those actions. Neither MCP nor the dashboard exposes a per-strategy exit/cancel action. The operator-only demo flatten route closes Derive positions globally, not Gemini positions. A complete exit workflow is still pending.
+
+
 ## 2026-11-20 — Sid: video walkthrough and consistent Convex theme
 
 - `finish/video-replay`: six-step `/replay` page reads the existing November 19 open/rescue JSON directly. Source badges, execution date, order IDs and Arc explorer links remain visible. Navigation does not invoke APIs or place trades.

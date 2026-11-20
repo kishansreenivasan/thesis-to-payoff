@@ -4,7 +4,6 @@ import { FormEvent, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { apiBase } from "../lib/client";
-import { SourceBadge } from "./badge";
 import { LivePanels } from "./live-panels";
 import { card, subcard, input } from "./theme";
 
@@ -35,26 +34,27 @@ export default function Page() {
   return <main className="dashboard">
     <header className="topbar">
       <Image src="/convex-logo.png" alt="Convex" width={1774} height={887} priority className="brand-logo" />
-      <nav aria-label="Main navigation"><Link href="/replay">Testnet demo</Link><a href="https://grok.com" target="_blank" rel="noreferrer">Open Grok ↗</a><span className="network-tag">TESTNET + SANDBOX</span></nav>
+      <nav aria-label="Main navigation"><Link href="/replay">Demo</Link><a href="https://grok.com" target="_blank" rel="noreferrer">Open Grok ↗</a></nav>
     </header>
     <div className="hero"><p className="eyebrow">THE CONVEX WORKSPACE</p><h1>Your conviction. A considered strategy.</h1><p>Turn a BTC market view into a coordinated position, with a plan for being wrong.</p></div>
     <div className="composer-layout">
     <section className="composer" style={card}><p className="eyebrow">01 / THESIS AND PLAN</p><h2>What’s your market view?</h2><form onSubmit={quote}><label htmlFor="thesis">Describe your BTC thesis, event concern and maximum risk.</label><textarea id="thesis" rows={3} value={text} onChange={(e) => setText(e.target.value)} style={input} /><div className="form-footer"><button disabled={busy}>{busy ? "Building your strategy…" : "Build strategy →"}</button><span>Deterministic pricing · Exact-version approval</span></div></form>{error && <div role="alert" className="empty-state" style={{ marginTop: 18, color: "#ffb489" }}>{error}<p style={{ marginBottom: 0 }}><Link href="/replay">Explore the completed testnet run →</Link></p></div>}
-      {result && <><p><b>Strategy</b> {result.plan.strategyId} · modeled max loss ${result.plan.modeledMaxLossUsd}</p><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 10 }}>{result.plan.legs.map((leg) => <article key={leg.legId} style={subcard}><b>{leg.legId} · {leg.venue}</b><p>{leg.instrumentId}</p><small>{leg.quantity} at {leg.limitPrice} · {leg.executionMode}</small></article>)}</div></>}
+      {result && <><p><b>Strategy</b> {result.plan.strategyId} · modeled max loss ${result.plan.modeledMaxLossUsd}</p><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 10 }}>{result.plan.legs.map((leg) => <article key={leg.legId} style={subcard}><b>{leg.legId} · {leg.venue}</b><p>{leg.instrumentId}</p><small>{leg.quantity} at {leg.limitPrice} · {leg.executionMode === "SIMULATED" ? "Modeled hedge" : "Executable leg"}</small></article>)}</div></>}
     </section>
     <aside className="journey"><p className="eyebrow">FROM VIEW TO POSITION</p><ol><li>Describe your view<small>Use the composer here, or enable the Convex connector in Grok.</small></li><li>Review the structure<small>Options, perps and event hedges. Clear costs and source labels.</small></li><li>Approve, then execute<small>Version-bound approval before testnet and sandbox orders.</small></li><li>Monitor and respond<small>Stress projections, Arc spending rules and a reduce-only fallback.</small></li></ol></aside>
     </div>
     <section style={{ ...card, marginTop: 18 }}><h2>Venue prices and sources</h2><p>These are separate venue feeds and contract types; compare their labels and units.</p><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 12 }}>
       <PriceCard title="Derive BTC-PERP" subtitle="BTC index / USD per BTC" quote={derive} />
-      <PriceCard title="Gemini Fed hike contract (L3a)" subtitle="Live mainnet price · position SIMULATED, no order sent" quote={fed} />
+      <PriceCard title="Gemini Fed hike contract (L3a)" subtitle="Read-only Fed price · modeled hedge, no order sent" quote={fed} />
       <PriceCard title="Gemini BTC threshold contract (L3b)" subtitle="Real sandbox NO order · USD per contract" quote={binary} />
     </div></section>
-    {result && <section style={{ ...card, marginTop: 18 }}><h2>Payoff grid <SourceBadge source="SIMULATED" /></h2><div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%" }}><thead><tr><th style={cell}>BTC at expiry</th><th style={cell}>Big Fed hike</th><th style={cell}>No big hike</th></tr></thead><tbody>{result.payoff.btcPrices.map((price, i) => <tr key={price}><td style={cell}>${price}</td><td style={cell}>${result.payoff.pnlIfBigHike[i]}</td><td style={cell}>${result.payoff.pnlIfNoBigHike[i]}</td></tr>)}</tbody></table></div><p>Modeled max loss line: {result.payoff.maxLossLineUsd} USD</p>{result.payoff.notes.map((note) => <p key={note} style={{ color: "#a4b5bd" }}>{note}</p>)}</section>}
+    {result && <section style={{ ...card, marginTop: 18 }}><h2>Payoff grid </h2><div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%" }}><thead><tr><th style={cell}>BTC at expiry</th><th style={cell}>Big Fed hike</th><th style={cell}>No big hike</th></tr></thead><tbody>{result.payoff.btcPrices.map((price, i) => <tr key={price}><td style={cell}>${price}</td><td style={cell}>${result.payoff.pnlIfBigHike[i]}</td><td style={cell}>${result.payoff.pnlIfNoBigHike[i]}</td></tr>)}</tbody></table></div><p>Modeled max loss line: {result.payoff.maxLossLineUsd} USD</p>{result.payoff.notes.map((note) => <p key={note} style={{ color: "#a4b5bd" }}>{note}</p>)}</section>}
     <LivePanels />
+    <p className="environment-note">Demo networks only. The Fed hedge and stress projections are modeled; Arc releases do not fund exchange margin.</p>
   </main>;
 }
 
 function PriceCard({ title, subtitle, quote }: { title: string; subtitle: string; quote?: Quote }) {
-  return <article style={subcard}><div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}><b>{title}</b>{quote && <SourceBadge source={quote.source} />}</div><p style={{ color: "#a4b5bd" }}>{subtitle}</p>{quote ? <p>Bid {quote.bid ?? "—"} · Ask {quote.ask ?? "—"}</p> : <p>Build a plan to load this quote.</p>}<small>{quote?.instrumentId ?? "Quote not loaded"}</small></article>;
+  return <article style={subcard}><div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}><b>{title}</b></div><p style={{ color: "#a4b5bd" }}>{subtitle}</p>{quote ? <p>Bid {quote.bid ?? "—"} · Ask {quote.ask ?? "—"}</p> : <p>Build a plan to load this quote.</p>}<small>{quote?.instrumentId ?? "Quote not loaded"}</small></article>;
 }
 const cell = { borderBottom: "1px solid #26373f", padding: 9, textAlign: "right" as const };
