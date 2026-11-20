@@ -15,6 +15,8 @@ Run the scripts with `DEMO_BASE_URL=https://<domain>` (or `PUBLIC_BASE_URL` in `
 
 ## T-10 min: open positions
 
+**Gemini sandbox liquidity is scarce** (BLOCKED.md, 2026-11-20): every open buys NO and uses up the sandbox YES bids. If positions are already open on the hosted server (dashboard "Venues and margin" shows OPEN), **skip `demo:reset --flatten` and step 6**. Just re-run calibrate; if the projected ratio has left [1.2, 1.5), a human moves the printed amount of test USDC in the Derive perp subaccount.
+
 6. `pnpm demo:open --evidence evidence/rehearsal-<date>-open.json`. It must print `OPEN`, with real venue order ids for L3b (Gemini sandbox), L1 and L2 (Derive testnet).
 7. `pnpm --filter @ttp/treasury precheck --strategy <strategyId printed above>`. It must say READY. If not, the owner runs the printed `cast send` commands from their own wallet.
 
