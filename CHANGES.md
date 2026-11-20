@@ -174,3 +174,8 @@ Format:
 - When: 2026-11-20 00:39 UTC
 - What: selected teal payoff-curve logo is served from `apps/web/public/convex-logo.png`; dashboard, metadata, approval navigation and README use Convex. Submission and human/lane handoffs now reflect PR #28 deployment and real rehearsal evidence. `docs/GROK-HANDOFF.md` assigns Grok acceptance/export to the teammate with access and documents that no xAI API key is needed.
 - Why: align the product identity and remove stale credential/hosting blockers while preserving simulation labels and liquidity/funding constraints. Repository/package/contract names are unchanged.
+
+## [Lane C] Grok connector acceptance completed (NOTED)
+- When: 2026-11-20 00:51 UTC
+- What: configured the user-approved Convex connector in the signed-in Grok account using the existing bearer. Grok activity showed actual thesis compilation and position-status calls. Saved `evidence/grok-chat-2026-11-19.md` from the rendered chat and Copy response output; it is a Markdown transcript, not a native provider archive.
+- Limits: status returned no open position. No orders, approvals, transfers, resets or flattening were requested or performed; pending-request display remains for the final staged demo.

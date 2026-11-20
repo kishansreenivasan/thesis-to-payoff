@@ -1,15 +1,15 @@
 # Convex: Grok teammate handoff
 
-**Owner:** teammate with Grok access. Sid owns Lane C; he does not need a Grok account to run the hosted API or validate MCP directly.
+**Owner: Sid (Lane C).** Initial Grok acceptance is now complete using the signed-in browser account and the user-approved Convex connector. [Conversation transcript](../evidence/grok-chat-2026-11-19.md): both thesis compilation and position status were observed as actual Convex tool activity. The status result was correctly empty. A teammate using another Grok account can follow the setup below; the hosted API itself does not require anyone to log in to Grok.
 
 ## Architecture and access
 
-Our Railway server hosts the API, dashboard and MCP tools. Grok runs in the teammate's Grok account and invokes those tools over HTTPS. There is no Grok model running on our server and no Grok/xAI API key is required.
+Our Railway server hosts the API, dashboard and MCP tools. Grok runs in the connected user's Grok account and invokes those tools over HTTPS. There is no Grok model running on our server and no Grok/xAI API key is required.
 
 - Connector URL: `https://ttp-production-7410ea00.up.railway.app/mcp` (`PUBLIC_BASE_URL` + `/mcp`).
 - Authentication: Bearer, using the existing `MCP_BEARER_TOKEN` from the team's approved secret configuration. If the UI has a token field, enter the token there; for an authorization header use `Bearer <MCP_BEARER_TOKEN>`.
 - Never put the token in a URL, commit, screenshot, chat message or export. Configure it only in the connector's authentication field.
-- Hosted dashboard and health endpoint have returned HTTP 200 in real mode. Authenticated MCP `tools/list` has returned all seven tools. This establishes endpoint readiness; it does not establish that a Grok conversation has used the connector.
+- Hosted dashboard and health endpoint have returned HTTP 200 in real mode. Authenticated MCP `tools/list` has returned all seven tools. The subsequent Grok conversation also invoked the connector; its transcript is linked above.
 
 If the teammate already configured this connector, use that existing connection. No new account or API key is needed.
 
@@ -28,10 +28,10 @@ If the teammate already configured this connector, use that existing connection.
 - The Fed hedge and stress projection remain SIMULATED. Arc releases go to a settlement wallet and do not credit venue margin.
 - Use `docs/DEMO-SCRIPT.md` for the staged demonstration. A fuller trading demo needs explicit coordination with the operator and adequate liquidity/funding.
 
-## Deliverables still needed from the teammate
+## Initial acceptance deliverables completed
 
-- [ ] Grok `compile_thesis` invocation confirmed.
-- [ ] Grok `position_status` invocation confirmed.
-- [ ] Redacted Grok chat export committed or supplied to Lane C.
+- [x] Grok `compile_thesis` invocation confirmed.
+- [x] Grok `position_status` invocation confirmed (no open position).
+- [x] Markdown UI transcript captured in `evidence/grok-chat-2026-11-19.md`; no authentication values included.
 
-Until that evidence arrives, describe the hosted MCP endpoint as verified and the Grok conversation/export as pending.
+For the final video, a position and pending owner request inside Grok still need a funded, liquid demo state. The initial read-only chat acceptance is complete; the saved transcript is not a native Grok archive.

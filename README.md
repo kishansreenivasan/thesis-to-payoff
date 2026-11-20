@@ -14,7 +14,7 @@ Current lane progress and blockers are tracked in [STATUS.md](STATUS.md). Demo r
 
 **Live dashboard:** https://ttp-production-7410ea00.up.railway.app · **MCP:** `https://ttp-production-7410ea00.up.railway.app/mcp` (bearer authentication).
 
-Lane A/B implementation and Lane C's coordinator, monitoring/event log, dashboard and hosted MCP transport are merged into `main` through PR #28. Recorded rehearsals include filled Gemini sandbox and Derive testnet orders, an Arc approval request/cancel, and a filled reduce-only rescue order. See [rehearsal evidence](#rehearsal-evidence) and [current human tasks](docs/HUMAN-TODO.md). Credentials and hosting are configured; remaining demo constraints are sandbox liquidity, vault funding, and the teammate's Grok chat acceptance/export.
+Lane A/B implementation and Lane C's coordinator, monitoring/event log, dashboard and hosted MCP transport are merged into `main` through PR #28. Recorded rehearsals include filled Gemini sandbox and Derive testnet orders, an Arc approval request/cancel, and a filled reduce-only rescue order. See [rehearsal evidence](#rehearsal-evidence) and [current human tasks](docs/HUMAN-TODO.md). Credentials and hosting are configured; remaining demo constraints are sandbox liquidity, vault funding, and final video/demo preparation. Grok thesis/status acceptance is recorded in [the chat transcript](evidence/grok-chat-2026-11-19.md).
 
 The product name is Convex; repository paths, workspace package names and deployed contract identifiers retain their existing names.
 
@@ -120,7 +120,7 @@ The risk engine projects margin under fixed shocks and demo thresholds. Projecte
 
 ## Grok integration
 
-Our server hosts the MCP tools; Grok runs in the teammate's Grok account and calls those tools. Connect to `https://ttp-production-7410ea00.up.railway.app/mcp` with bearer authentication using `MCP_BEARER_TOKEN`; no Grok/xAI API key is needed on the server. The endpoint has passed authenticated `tools/list`, while the teammate with Grok access owns the conversational acceptance test and chat export described in [the Grok handoff](docs/GROK-HANDOFF.md). Grok supplies thesis fields; deterministic code selects instruments, prices and sizes, and owner approvals are signed in the owner's wallet.
+Our server hosts the MCP tools; Grok runs in the connected account and calls those tools. Connect to `https://ttp-production-7410ea00.up.railway.app/mcp` with bearer authentication using `MCP_BEARER_TOKEN`; no Grok/xAI API key is needed on the server. The endpoint has passed authenticated `tools/list`, and the subsequent [Grok acceptance conversation](evidence/grok-chat-2026-11-19.md) invoked `compile_thesis` and `position_status`. Repeat setup and the remaining staged-demo check are described in [the Grok handoff](docs/GROK-HANDOFF.md). Grok supplies thesis fields; deterministic code selects instruments, prices and sizes, and owner approvals are signed in the owner's wallet.
 
 ## Rehearsal evidence
 

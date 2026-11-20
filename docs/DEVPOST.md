@@ -11,7 +11,7 @@
 - MCP connector: `https://ttp-production-7410ea00.up.railway.app/mcp` (bearer authentication; never publish the token)
 - Video: TODO — record and add the final URL
 - Vault: [Arc testnet deployment](https://explorer.testnet.arc.io/address/0x1e9B755C7caA3d1D007d70A7cF77E93cc6A65E07)
-- Grok chat: TODO — teammate with Grok access follows [GROK-HANDOFF.md](GROK-HANDOFF.md) and supplies a redacted export
+- Grok chat: [verified read-only conversation transcript](../evidence/grok-chat-2026-11-19.md); [repeat setup / handoff](GROK-HANDOFF.md)
 
 ## Elevator pitch (200-character field)
 
@@ -40,7 +40,7 @@ We divided development into treasury/risk, venues/strategy, and orchestration/in
 - **Arc:** a deployed Solidity treasury vault with per-transaction, daily and strategy caps, a reserve floor, destination allowlist and pause controls. Foundry tests cover its constraints; viem and Wagmi support chain interactions and owner wallet approval.
 - **Gemini Prediction Markets:** sandbox discovery and signed BTC event orders, plus live read-only Fed-market quotes. Lossless parsing preserves large venue order identifiers.
 - **Derive:** testnet BTC option and perpetual orders signed with EIP-712, margin reads and reduce-only execution.
-- **Grok-compatible MCP:** seven tools expose thesis validation, event discovery, quoting, strategy approval/execution and position/transfer status through authenticated Streamable HTTP. Our server hosts the tools; Grok runs in the teammate's account. No Grok/xAI API key or server-side LLM is required. The hosted tool listing is verified; Grok chat acceptance/export remains assigned to that teammate.
+- **Grok-compatible MCP:** seven tools expose thesis validation, event discovery, quoting, strategy approval/execution and position/transfer status through authenticated Streamable HTTP. Our server hosts the tools; Grok runs in the connected account. No Grok/xAI API key or server-side LLM is required. The hosted tool listing is verified, and Grok invoked thesis compilation and position status in a recorded acceptance conversation. Status correctly returned no open position.
 - **Application stack:** TypeScript, pnpm workspaces, Next.js, React, Fastify, SQLite/better-sqlite3, Zod, decimal.js, and the MCP TypeScript SDK. Docker and Railway host the API, dashboard and MCP at one origin. Vitest and Foundry provide automated validation.
 
 SQLite persists order submissions and venue identifiers before execution, alongside position snapshots and an append-only activity log. A 10-second risk monitor and server-sent events keep the dashboard updated.
@@ -69,7 +69,7 @@ Those lessons shaped Convex around deterministic calculations, explicit approval
 
 ## What's next for Convex
 
-Our immediate priorities are the teammate's Grok acceptance/chat export, final screenshots and video, and a fresh staged demo when sandbox liquidity and treasury funding permit. Hosted MCP access is already configured; no new xAI API key is required.
+Our immediate priorities are final screenshots and video, and a fresh staged demo when sandbox liquidity and treasury funding permit. The Grok connector is configured and read-only thesis/status acceptance is recorded; showing a pending request in Grok remains a staged-demo check. Hosted MCP access is already configured; no new xAI API key is required.
 
 Next we would improve strategy explanations and scenario comparison, add risk alerts and validate additional supported strategies and instruments. Any cross-venue funding capability would require a separate integration; this prototype's Arc vault does not fund either venue.
 
@@ -88,4 +88,4 @@ Next we would improve strategy explanations and scenario comparison, add risk al
 
 **How are Gemini Prediction Markets used?** Live read-only mainnet Fed-decision prices inform the simulated Fed leg and payoff grid. Real Gemini sandbox NO orders supply the executable BTC event leg, subject to available liquidity.
 
-**How is Grok used?** The hosted MCP endpoint is ready for the teammate's Grok session to call thesis, strategy and status tools. Grok supplies structured thesis fields; deterministic code selects prices, instruments and quantities. The teammate must still confirm the chat workflow and supply its redacted export. Grok cannot sign owner approvals.
+**How is Grok used?** The hosted MCP endpoint is connected to Grok. The recorded acceptance conversation invoked `compile_thesis` and `position_status`. Grok supplies structured thesis fields; deterministic code selects prices, instruments and quantities. The redacted Markdown UI transcript is committed; it shows a correctly empty position status and does not demonstrate trading initiated from Grok. Grok cannot sign owner approvals.
