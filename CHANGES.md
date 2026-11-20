@@ -1,5 +1,15 @@
 # CHANGES
 
+## 2026-11-20 — Sid: position exits and product wording
+
+- Added authenticated `POST /api/positions/:id/close` and dashboard **Close positions → Confirm close**, a saved-position selector, per-leg exit progress and retry controls. The perp closes first; only this strategy's journaled exposure is sold, capped by actual holdings and available liquidity. Derive uses reduce-only orders; Gemini sells the held YES/NO outcome. Modeled legs are excluded.
+- Exit submissions and fills persist before retries. Timeouts, incomplete cancellations, invalid fills and illiquid legs remain pending rather than appearing closed or being duplicated. The saved event journal restores pending funding requests for exit cleanup after restart.
+- Exit/rescue actions serialize against one another. Closing suspends risk writes; delayed margin reads cannot restore a closed position. Re-quoting an executed strategy cannot erase its position record. The existing administrator flatten/reset scripts remain available; the UI prevents clearing workspace history while saved positions remain open.
+- Replaced visible demo-oriented wording throughout the site with **Risk controls** and **Execution history**. `/history` contains the dated saved execution run; legacy `/replay` links redirect there. Modeling explanations and the underlying source/evidence data remain intact. Wallet approvals still use the configured Arc network.
+- Validation: `pnpm check` (147 pass, 8 live tests skipped), `pnpm demo:mock`, production Next build and browser confirmation/selection checks against two isolated fixture positions. Tested close behavior with local fixtures, not external trades. No real positions were closed during development. Grok exit tools and dashboard entry-approval/execution buttons remain separate follow-up work.
+
+
+
 ## 2026-11-20 — Sid: simplify demo labels
 
 - At the user's request, removed the source badge UI and environment header tag from the dashboard and evidence walkthrough, including the testnet/simulated pills. Execution dates, receipts and short explanations of modeled values remain visible. API source fields and evidence files are unchanged.

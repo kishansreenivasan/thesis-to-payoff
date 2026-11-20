@@ -1,8 +1,8 @@
 # Convex video: easiest recording path
 
-Use `/replay` on the Convex web app. It displays the original November 19 execution evidence with its dates, receipt IDs and plain-language modeling notes. Next/Back only move between screens; this page makes no API calls, submits no transactions, and needs no token or wallet. No fresh Gemini liquidity or Arc funding is needed to record this walkthrough.
+Use `/history` on the Convex web app. It displays the original November 19 execution evidence with its dates, receipt IDs and plain-language modeling notes. Next/Back only move between screens; this page makes no API calls, submits no transactions, and needs no token or wallet. No fresh Gemini liquidity or Arc funding is needed to record this walkthrough.
 
-Local: `pnpm dev:web`, then open http://localhost:3000/replay. Hosted after deployment: https://ttp-production-7410ea00.up.railway.app/replay.
+Local: `pnpm dev:web`, then open http://localhost:3000/history. Hosted after deployment: https://ttp-production-7410ea00.up.railway.app/history.
 
 Record the browser at 1440×900 or 1920×1080, with notifications hidden. Keep the execution date and modeling explanation visible. Start on “Your thesis” and click Next at the cue. Aim for 2 minutes 30 seconds. Read naturally; leave a short pause between screens.
 
@@ -15,13 +15,13 @@ Record the browser at 1440×900 or 1920×1080, with notifications hidden. Keep t
 | 1:35–2:00 | Owner control | “The Arc vault enforces spending authority onchain. This request exceeds the 25-USDC transaction cap, so the release reverts. The agent then files an owner approval request. These links lead to the real Arc transactions. Only the owner’s wallet can approve. Arc releases go to a settlement wallet, not into exchange margin.” |
 | 2:00–2:30 | The rescue | “In this run the owner declined. The agent canceled the request and filled a real reduce-only sell on Derive testnet. The later account check shows the smaller position and greater margin headroom. Grok gives users the interface; deterministic execution and onchain controls enforce the boundaries. One thesis. Event-aware execution. Onchain spending discipline.” |
 
-For a Grok opening shot, click **Create with Grok**, enable the **Convex connector** in that Grok account, and prompt: “Use Convex to compile this thesis: Bullish BTC into December, worried the Fed hikes more than expected on Dec 11. Max risk $500.” Ask for compilation only while current sandbox pricing is blocked by liquidity, then return to the demo walkthrough. This is a real Grok tool call; the `/replay` controls advance through the saved execution evidence.
+For a Grok opening shot, click **Create with Grok**, enable the **Convex connector** in that Grok account, and prompt: “Use Convex to compile this thesis: Bullish BTC into December, worried the Fed hikes more than expected on Dec 11. Max risk $500.” Ask for compilation only while current sandbox pricing is blocked by liquidity, then return to the demo walkthrough. This is a real Grok tool call; the `/history` controls advance through the saved execution evidence.
 
 You can also use the actual Grok acceptance chat, which invoked `compile_thesis` and `position_status`. That chat returned no open position. The pending-request status in the rescue evidence was an MCP response from the rehearsal, not a pending request shown inside that Grok chat. Do not splice those into a claim that Grok showed a pending approval.
 
 ## Recording and upload
 
-1. Open `/replay` and verify all six screens; leave it at the first screen.
+1. Open `/history` and verify all six screens; leave it at the first screen.
 2. Start the computer's screen recorder with microphone enabled. Record the browser window and follow the table.
 3. Stop after the closing line. Trim the beginning/end; keep the execution date and modeling explanation visible.
 4. Upload the video and check that it plays while signed out. Add its URL to the Devpost form and `docs/DEVPOST.md`.

@@ -75,7 +75,7 @@ Next we would improve strategy explanations and scenario comparison, add risk al
 
 ## Evidence and demo readiness
 
-The `/replay` walkthrough presents saved November 19 execution evidence, with the run date and source labels visible. It performs no trading and enables video capture while fresh sandbox execution is liquidity-constrained. This follow-up is prepared on `finish/video-replay`; verify deployment before sharing its hosted URL.
+The `/history` walkthrough presents saved November 19 execution evidence, with the run date and source labels visible. It performs no trading and enables video capture while fresh sandbox execution is liquidity-constrained. This follow-up is prepared on `finish/video-replay`; verify deployment before sharing its hosted URL.
 
 - [Open](../evidence/rehearsal-2026-11-19-open.json) / [reopen](../evidence/rehearsal-2026-11-19-reopen.json): filled sandbox and testnet legs.
 - [Calibration](../evidence/rehearsal-2026-11-19-calibrate.txt): a real margin read with a simulated -15% stress projecting a 1.3226 ratio.

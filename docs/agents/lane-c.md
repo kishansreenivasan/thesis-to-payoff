@@ -56,3 +56,7 @@ Lane B's venues pass live smoke tests on Derive testnet and the Gemini sandbox (
 - Apply `CHANGES.md` requests to `packages/shared` (optional fields only).
 - Keep `main` green: `pnpm check` and `pnpm demo:mock`.
 - `demo:open` and `demo:reset` are implemented. Follow the liquidity warning in `docs/DEMO-SCRIPT.md`; do not reset an already-open demo unnecessarily.
+
+## Position lifecycle follow-up (2026-11-20, Sid)
+
+The `finish/video-replay` follow-up adds **Close positions** in the dashboard and `POST /api/positions/:id/close`. It exits this strategy's recorded exposure, prioritizes the perp, preserves unknown submissions across retries/restarts, and reports per-leg failures. Partial exits remain REDUCING; monitoring cannot reopen exposure once an exit begins. Pending funding requests are canceled or reconciled. This is implemented and fixture-tested; no new live exit was performed for validation. Grok does not yet expose an exit tool, and dashboard entry approval/execution controls remain pending. The dated evidence view is `/history`; `/replay` redirects there.

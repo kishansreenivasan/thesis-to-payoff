@@ -14,7 +14,7 @@ Current lane progress and blockers are tracked in [STATUS.md](STATUS.md). Demo r
 
 **Live dashboard:** https://ttp-production-7410ea00.up.railway.app · **MCP:** `https://ttp-production-7410ea00.up.railway.app/mcp` (bearer authentication).
 
-**Video walkthrough:** `/replay` presents the November 19 testnet/sandbox run using its saved order and Arc evidence. It needs no credentials and performs no trading. [Recording guide and 2:30 script](docs/VIDEO.md).
+**Video walkthrough:** `/history` presents the November 19 testnet/sandbox run using its saved order and Arc evidence. It needs no credentials and performs no trading. [Recording guide and 2:30 script](docs/VIDEO.md).
 
 Lane A/B implementation and Lane C's coordinator, monitoring/event log, dashboard and hosted MCP transport are merged into `main` through PR #28. Recorded rehearsals include filled Gemini sandbox and Derive testnet orders, an Arc approval request/cancel, and a filled reduce-only rescue order. See [rehearsal evidence](#rehearsal-evidence) and [current human tasks](docs/HUMAN-TODO.md). Credentials and hosting are configured; remaining demo constraints are sandbox liquidity, vault funding, and final video/demo preparation. Grok thesis/status acceptance is recorded in [the chat transcript](evidence/grok-chat-2026-11-19.md).
 
@@ -53,6 +53,12 @@ The fixed demo thesis is "Bullish BTC into December, worried the Fed hikes more 
 Budget: premium + perp stop + hedges stay inside the stated max risk; the planner refuses a plan that does not fit. The payoff grid shows P&L at Dec 11 across BTC prices, split by Fed outcome, with the max-loss line.
 
 **Margin rescue.** Every 10 s (or on a demo shock) the risk engine projects the perp margin ratio under the shock. Below 1.5 it asks the Arc vault for a top-up; a release over the vault's per-tx cap reverts onchain and becomes an owner approval request. If the owner declines (or the request expires, or simulated credit does not improve the real margin), the agent sends a real reduce-only order on the Derive perp. Below 1.2 it reduces straight away.
+
+## Closing positions
+
+In **Venues and margin**, choose the saved position (if more than one exists), click **Close positions**, then **Confirm close**. With real venues, save the existing operator access token under **Trading access** first. This closes that strategy's attributed fills, starting with the leveraged perp, and cancels its outstanding orders and pending funding request. Derive exits are reduce-only; Gemini exits sell the held outcome contracts. The modeled Fed hedge has no venue position to sell.
+
+The dashboard shows each leg's result. Unfilled exits stay in `REDUCING` with **Retry remaining exits**; it shows `CLOSED` only after confirmed exits and funding-request cleanup. Uncertain submissions are reconciled from the order journal rather than blindly resent. Closing does not withdraw venue balances. **Clear workspace** clears application history and is disabled while a saved position remains open.
 
 ## Quick start
 
