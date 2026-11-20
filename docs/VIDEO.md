@@ -1,5 +1,27 @@
 # Convex video: easiest recording path
 
+## Verified button sequence (Nov 20)
+
+The complete interactive build → approve → execute → close flow passed browser checks against isolated fixtures. On the actual configured services, automatic access, live plan generation and **Approve plan** passed without a manual token. A fresh **Execute plan** was deliberately not clicked: the selected `GEMI-BTC2611302200-HI85000` book has one YES bid at 0.01 (one NO entry at 0.99) but no YES asks for a NO exit. The separate Arc precheck also still reports 22 USDC total / 12 above reserve, insufficient for the full approved-release rehearsal. The decline path does not itself require that release funding.
+
+**The stable recording path checked on screen is http://localhost:3100/history.** It shows the real November 19 execution evidence. Use the same buttons below; these screens do not place new trades.
+
+| Click | Expected screen/output |
+|---|---|
+| Open `/history` | Your thesis; bullish BTC, Fed concern, $500 budget; execution date visible |
+| **Next →** | Four legs; call 0.04 BTC, perp 0.0172 BTC, modeled Fed hedge and 42 BTC NO contracts; modeled loss $445.31 |
+| **Next →** | Three executable orders FILLED; Gemini and Derive venue IDs visible |
+| **Next →** | Reported ratio 4.3214; hypothetical −15% ratio 1.3214; top-up 36.10 USDC |
+| **Next →** | `ExceedsPerTxCap`; 36.10 requested against a 25-USDC cap; Arc revert and request links |
+| **Next →** | Rejected request; reduce-only sell 0.01 BTC FILLED; later account size 0.0072 BTC, ratio 10.3214 and stress ratio 7.3209 |
+| **Restart →** | Returns to the thesis; no financial action |
+
+All six screens were clicked through and visually inspected; there are no demo banners or manual access prompts. Screenshots are saved locally in `output/convex-video/validated-history-1.png` through `validated-history-6.png` under the chat workspace.
+
+**For a fresh interactive recording once liquidity permits:** open the dashboard → **Build strategy** → review legs/payoff → **Next: review and execute this plan** → **Approve plan** → **Execute plan** → **View positions and manage exits**. For exit footage choose the saved position → **Close positions** → **Confirm close**. A partial exit must remain visible, not be narrated as fully closed. Do not cut current quote footage into the dated history as though it were the same fresh execution.
+
+
+
 Use `/history` on the Convex web app. It displays the original November 19 execution evidence with its dates, receipt IDs and plain-language modeling notes. Next/Back only move between screens; this page makes no API calls, submits no transactions, and needs no token or wallet. No fresh Gemini liquidity or Arc funding is needed to record this walkthrough.
 
 Local: `pnpm dev:web`, then open http://localhost:3000/history. Hosted after deployment: https://ttp-production-7410ea00.up.railway.app/history.

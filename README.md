@@ -54,9 +54,18 @@ Budget: premium + perp stop + hedges stay inside the stated max risk; the planne
 
 **Margin rescue.** Every 10 s (or on a demo shock) the risk engine projects the perp margin ratio under the shock. Below 1.5 it asks the Arc vault for a top-up; a release over the vault's per-tx cap reverts onchain and becomes an owner approval request. If the owner declines (or the request expires, or simulated credit does not improve the real margin), the agent sends a real reduce-only order on the Derive perp. Below 1.2 it reduces straight away.
 
+## Build, approve and execute
+
+1. Enter a supported thesis and click **Build strategy**.
+2. Review the selected legs and payoff. Use **Next: review and execute this plan** to reach the approval panel.
+3. Click **Approve plan**, then **Execute plan**. These are separate actions; editing or rebuilding the thesis clears the browser's approval state.
+4. Execution displays confirmed fills or a partial outcome. The positions panel refreshes for management and exits. Failed later submissions preserve the filled legs and uncertain journal entries rather than hiding exposure.
+
+For a local owner workspace, set `LOCAL_OPERATOR_ACCESS=true` in the gitignored root `.env`. After building the web app with `NEXT_PUBLIC_API_BASE_URL='' pnpm --filter @ttp/web build`, `PORT=3100 pnpm start` reads `.env` and binds only to `127.0.0.1`. Same-origin local actions use the server configuration automatically; the global bearer is never sent to the browser. Keep this flag false on public deployments. The Grok MCP endpoint always requires bearer authentication.
+
 ## Closing positions
 
-In **Venues and margin**, choose the saved position (if more than one exists), click **Close positions**, then **Confirm close**. With real venues, save the existing operator access token under **Trading access** first. This closes that strategy's attributed fills, starting with the leveraged perp, and cancels its outstanding orders and pending funding request. Derive exits are reduce-only; Gemini exits sell the held outcome contracts. The modeled Fed hedge has no venue position to sell.
+In **Venues and margin**, choose the saved position (if more than one exists), click **Close positions**, then **Confirm close**. The local owner workspace reads its existing `.env` settings automatically. Hosted access still requires authorization under **Trading access**. This closes that strategy's attributed fills, starting with the leveraged perp, and cancels its outstanding orders and pending funding request. Derive exits are reduce-only; Gemini exits sell the held outcome contracts. The modeled Fed hedge has no venue position to sell.
 
 The dashboard shows each leg's result. Unfilled exits stay in `REDUCING` with **Retry remaining exits**; it shows `CLOSED` only after confirmed exits and funding-request cleanup. Uncertain submissions are reconciled from the order journal rather than blindly resent. Closing does not withdraw venue balances. **Clear workspace** clears application history and is disabled while a saved position remains open.
 

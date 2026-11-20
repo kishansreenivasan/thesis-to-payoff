@@ -1,5 +1,22 @@
 # CHANGES
 
+## 2026-11-20 — Sid: video walkthrough verification
+
+- Verified the current local browser connects through server configuration with no token field. Clicked live **Build strategy** and **Approve plan** successfully; **Execute plan** becomes enabled. No new external order was submitted because the selected Gemini NO has entry liquidity for only one contract and no exit liquidity.
+- Completed the entire interactive entry/exit sequence against isolated fixtures, including text-edit approval invalidation. Clicked every `/history` stage, visually checked the strategy and approval layouts, confirmed receipt IDs and outputs, and saved local screenshots. The history path is ready for recording with the exact button/output guide in `docs/VIDEO.md`.
+- Saved actual read-only readiness data, with credential checks, in `evidence/readiness-2026-11-20.json`. Derive accounts are flat; existing older Gemini holdings were left untouched. The old no-bids blocker is partly superseded by one HI85000 bid; missing exit liquidity remains a real fresh-run constraint.
+
+
+
+## 2026-11-20 — Sid: complete dashboard entry flow and automatic local access
+
+- Dashboard now exposes plan review, separate **Approve plan** / **Execute plan** actions, execution results and immediate position refresh. Editing/rebuilding clears client approval. The Gemini price card now displays the actual selected L3b contract rather than the first BTC quote.
+- `LOCAL_OPERATOR_ACCESS=true` recognizes same-origin loopback requests and binds the API to `127.0.0.1`. It is enabled only in the user's gitignored local `.env`; the committed example defaults false. Local UI reads server configuration without receiving the bearer token. Remote/cross-origin requests are rejected, and MCP still requires bearer authentication. Root `pnpm start` reads `.env` when present.
+- Execution refreshes and checks every executable leg before placing any orders and again before each send. Changed prices beyond approved limits, stale quotes and insufficient size block submission. Failed later orders persist a partial position and its journal. Confirmed fills remain recorded even when subsequent account reads fail.
+- Validation: 153 tests pass, 8 live tests skipped; production build passes. An isolated fixture browser test completed build → approve → execute → close, including approval invalidation after text edits. No external trades were placed during these implementation checks. A real read-only preflight and video rehearsal follow next.
+
+
+
 ## 2026-11-20 — Sid: position exits and product wording
 
 - Added authenticated `POST /api/positions/:id/close` and dashboard **Close positions → Confirm close**, a saved-position selector, per-leg exit progress and retry controls. The perp closes first; only this strategy's journaled exposure is sold, capped by actual holdings and available liquidity. Derive uses reduce-only orders; Gemini sells the held YES/NO outcome. Modeled legs are excluded.

@@ -1,5 +1,17 @@
 # BLOCKED
 
+## [Lane B/C] Fresh complete recording needs Gemini exit liquidity (OPEN)
+- When: 2026-11-20, read-only preflight in `evidence/readiness-2026-11-20.json`
+- Task: user-requested browser walkthrough for recording the complete build/approve/execute/close flow.
+- Expected: enough liquidity to open and exit the selected BTC event contract.
+- Actual: the newly listed HI85000 has a 0.01 YES bid for one contract, so quoting now works, but no YES ask exists to sell the NO back. The older HI67500 remains empty. Derive main/perp accounts are flat; 48 older Gemini NO contracts remain in the account and were not touched. Arc still holds 22 USDC, 12 above reserve.
+- Evidence: actual service reads saved in `evidence/readiness-2026-11-20.json`; this supersedes the blanket claim that every required-event strike lacks a YES bid.
+- Options: restore both sides of the Gemini sandbox book; wait for liquidity; record the verified dated execution history meanwhile.
+- Meanwhile: automatic local access, live quoting and plan approval are verified; full entry/exit UI passes isolated fixture checks; every `/history` stage has been clicked and visually checked. No new external orders or transfers were submitted for this check.
+- Decision: retain the user's previously selected evidence-based video path until fresh execution can complete reliably.
+
+
+
 Append new entries at the top. Format: DESIGN.md Section 14. Humans fill in "Decision".
 
 ```
