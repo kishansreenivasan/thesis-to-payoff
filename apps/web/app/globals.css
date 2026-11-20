@@ -1,0 +1,42 @@
+:root { color-scheme: dark; --muted: #a4b5bd; --accent: #00d6b4; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #080e12; color: #eef6f6; font-family: system-ui, sans-serif; }
+button, input, textarea { font: inherit; }
+button, .button { border: 1px solid #00d6b4; background: #00d6b4; color: #052c25; padding: 12px 20px; border-radius: 9px; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; }
+button:hover:not(:disabled), .button:hover { background: #43e5c8; border-color: #43e5c8; }
+button:disabled { opacity: .4; cursor: default; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid #00d6b4; outline-offset: 4px; }
+a { color: #00d6b4; text-underline-offset: 4px; }
+p { line-height: 1.6; }
+h2 { font-size: 19px; letter-spacing: -.4px; margin-top: 0; }
+small, code { overflow-wrap: anywhere; }
+summary { color: #a4b5bd; cursor: pointer; padding: 10px 0; }
+dd { margin: 0; }
+::selection { background: #00d6b4; color: #052c25; }
+.dashboard { max-width: 1260px; margin: 0 auto; padding: 0 40px 70px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid #223139; height: 100px; }
+.brand-logo { display: block; width: 200px; height: auto; }
+.topbar nav { display: flex; align-items: center; gap: 24px; font-size: 13px; }
+.topbar nav a { text-decoration: none; color: #a4b5bd; }
+.network-tag { display: inline-flex; gap: 8px; align-items: center; color: #82ccb9; font-size: 10px; letter-spacing: 1.3px; font-weight: 700; }
+.network-tag::before { content: ''; width: 6px; height: 6px; background: #00d6b4; border-radius: 50%; }
+.hero { padding: 42px 0 26px; }
+.eyebrow { color: #00d6b4; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+.hero h1 { font-size: clamp(30px, 3.5vw, 46px); line-height: 1.1; letter-spacing: -1.6px; margin: 14px 0; }
+.hero p:last-child { color: #a4b5bd; font-size: 15px; margin-bottom: 0; }
+.composer-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 18px; }
+.composer textarea { width: 100%; min-height: 116px; resize: vertical; margin: 14px 0 18px; line-height: 1.7; }
+.composer label { color: #a4b5bd; font-size: 13px; }
+.form-footer { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+.form-footer span { color: #a4b5bd; font-size: 11px; }
+.journey { padding: 24px; border: 1px solid #223139; border-radius: 16px; background: #0b1318; }
+.journey ol { list-style: none; padding: 0; margin: 20px 0 0; counter-reset: journey; }
+.journey li { counter-increment: journey; border-bottom: 1px solid #223139; padding: 0 0 16px 26px; margin-bottom: 16px; position: relative; font-size: 13px; }
+.journey li::before { content: '0' counter(journey); position: absolute; left: 0; color: #00d6b4; font-size: 10px; top: 3px; }
+.journey li:last-child { margin-bottom: 0; border: 0; padding-bottom: 0; }
+.journey small { display: block; color: #a4b5bd; margin-top: 6px; line-height: 1.5; }
+.dashboard table th { font-weight: 500; color: #a4b5bd; font-size: 12px; }
+.dashboard section > h2 { display: flex; gap: 10px; align-items: center; }
+.empty-state { border: 1px dashed #33464f; border-radius: 10px; padding: 18px; color: #a4b5bd; font-size: 13px; }
+.secondary-link { font-size: 12px; }
+@media (max-width: 800px) { .dashboard { padding: 0 20px 40px; } .composer-layout { grid-template-columns: 1fr; } .journey { display: none; } .topbar nav { gap: 12px; font-size: 11px; } .network-tag { display: none; } .brand-logo { width: 145px; } }

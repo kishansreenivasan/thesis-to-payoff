@@ -1,5 +1,7 @@
 # Demo runbook (DESIGN.md Section 16)
 
+**For the video now:** use the six-screen `/replay` walkthrough and the [2:30 narration/capture guide](VIDEO.md). It reads the saved real testnet/sandbox evidence, with source labels and the run date visible. It needs no fresh positions, wallet, token, funding or liquidity. The live-run instructions below are for a future fresh execution.
+
 Testnet and sandbox only. Read amounts off the screen; do not quote fixed numbers (the top-up is
 computed live, about $35 to $80).
 

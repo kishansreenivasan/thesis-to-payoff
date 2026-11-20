@@ -1,5 +1,15 @@
 # CHANGES
 
+## 2026-11-20 — Sid: video walkthrough and consistent Convex theme
+
+- `finish/video-replay`: six-step `/replay` page reads the existing November 19 open/rescue JSON directly. Source badges, execution date, order IDs and Arc explorer links remain visible. Navigation does not invoke APIs or place trades.
+- User selected the easiest evidence-based video path and requested the title “Testnet demo” rather than “recorded rehearsal.”
+- Dashboard, source badges, controls and owner approval page now share the charcoal/teal theme. The header is compact and the thesis composer is prominent. Grok remains a separate connected chat; visible links distinguish it from the dashboard parser.
+- Added `docs/VIDEO.md` with timed narration. Screenshot artifacts are local, outside the repo. The actual video and upload remain pending.
+- Validation: `pnpm check` (136 pass, 8 live tests skipped), `pnpm demo:mock`, production Next build, browser walkthrough of all six stages. No fresh trades, transfers or resets were performed.
+- Follow-up outside this video patch: audit unattended rescue before relying on it. Inspection found pending approvals can override the critical-ratio branch, and the monitor uses cached request state without polling expiry/approval. Those paths are not demonstrated by the evidence playback and are not fixed by this UI change.
+
+
 Two uses:
 1. **Shared schema requests.** Lanes A and B propose changes to `packages/shared` here. Lane C applies them. Only new optional fields; never rename or remove.
 2. **Spec deviations.** When an external API differs from DESIGN.md, follow the official docs and record the difference here.

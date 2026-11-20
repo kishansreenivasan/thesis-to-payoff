@@ -9,7 +9,7 @@
 - Live demo: https://ttp-production-7410ea00.up.railway.app
 - Logo: [selected Convex logo](../apps/web/public/convex-logo.png)
 - MCP connector: `https://ttp-production-7410ea00.up.railway.app/mcp` (bearer authentication; never publish the token)
-- Video: TODO — record and add the final URL
+- Video: TODO — record and add the final URL; [timed narration and capture guide](VIDEO.md) prepared
 - Vault: [Arc testnet deployment](https://explorer.testnet.arc.io/address/0x1e9B755C7caA3d1D007d70A7cF77E93cc6A65E07)
 - Grok chat: [verified read-only conversation transcript](../evidence/grok-chat-2026-11-19.md); [repeat setup / handoff](GROK-HANDOFF.md)
 
@@ -74,6 +74,8 @@ Our immediate priorities are final screenshots and video, and a fresh staged dem
 Next we would improve strategy explanations and scenario comparison, add risk alerts and validate additional supported strategies and instruments. Any cross-venue funding capability would require a separate integration; this prototype's Arc vault does not fund either venue.
 
 ## Evidence and demo readiness
+
+The `/replay` walkthrough presents saved November 19 execution evidence, with the run date and source labels visible. It performs no trading and enables video capture while fresh sandbox execution is liquidity-constrained. This follow-up is prepared on `finish/video-replay`; verify deployment before sharing its hosted URL.
 
 - [Open](../evidence/rehearsal-2026-11-19-open.json) / [reopen](../evidence/rehearsal-2026-11-19-reopen.json): filled sandbox and testnet legs.
 - [Calibration](../evidence/rehearsal-2026-11-19-calibrate.txt): a real margin read with a simulated -15% stress projecting a 1.3226 ratio.

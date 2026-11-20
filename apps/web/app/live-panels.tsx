@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { arcAddressUrl, arcTxUrl } from "@ttp/treasury/owner";
 import { api, apiBase, getOperatorToken, setOperatorToken } from "../lib/client";
 import { SourceBadge } from "./badge";
+import { card, input } from "./theme";
 
 type Order = { clientOrderId: string; legId: string; venue: string; instrumentId: string; side: string; quantity: string; filledQuantity: string; avgPrice: string | null; state: string; venueOrderId: string | null; reduceOnly: boolean; source: string };
 type Margin = { account: string; equityUsd: string; maintenanceMarginUsd: string; marginRatio: string; perpSizeBtc: string; indexPriceUsd: string; source: string; timestamp: string };
@@ -56,7 +57,7 @@ export function LivePanels() {
     finally { setBusy(""); }
   };
   const doShock = (pct: string) => run(`Shock ${pct}%`, async () => {
-    if (!position) throw new Error("No open position. Run pnpm demo:open first.");
+    if (!position) throw new Error("Open a position before applying a stress scenario.");
     setShock(await api<ShockResult>(`/api/demo/${position.strategyId}/shock`, { method: "POST", body: { shockPct: pct } }));
   });
   const doReset = () => run("Reset", async () => { await api("/api/demo/reset", { method: "POST" }); setShock(null); setEvents([]); });
@@ -78,17 +79,17 @@ export function LivePanels() {
         <button disabled={!!busy} onClick={() => void doReset()}>Reset</button>
         {busy && <span>{busy}…</span>}
       </div>
-      <p style={{ color: "#52606d", fontSize: 13 }}>The shock is a hypothetical price move fed to the risk engine (projected ratio is SIMULATED). Any order or Arc transaction it triggers is real testnet activity.</p>
+      <p style={{ color: "#a4b5bd", fontSize: 13 }}>The shock is a hypothetical price move fed to the risk engine (projected ratio is SIMULATED). Any order or Arc transaction it triggers is real testnet activity.</p>
       {live && <details><summary>Operator token {token ? "(set in this browser)" : "(needed for live controls)"}</summary>
         <input type="password" placeholder="MCP bearer token" value={token} onChange={(e) => setToken(e.target.value)} style={{ ...input, width: 320 }} />
         <button onClick={() => setOperatorToken(token)} style={{ marginLeft: 8 }}>Save</button>
       </details>}
-      {error && <p role="alert" style={{ color: "#a12622" }}>{error}</p>}
+      {error && <p role="alert" style={{ color: "#ffb489" }}>{error}</p>}
     </section>}
 
     <section style={{ ...card, marginTop: 18 }}>
       <h2>Venues and margin</h2>
-      {!position ? <p>No position open yet. Run <code>pnpm demo:open</code>, or build, approve and execute a plan.</p> : <>
+      {!position ? <div className="empty-state">No active position. Start with your thesis above, or <a href="/replay">explore the completed testnet demo</a>.</div> : <>
         <p><b>{position.positionId}</b> · state {position.state} · risk {position.riskState}</p>
         {margin && <MarginGauge margin={margin} shock={latestShock} />}
         <div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%", fontSize: 14 }}>
@@ -105,8 +106,8 @@ export function LivePanels() {
 
     <section style={{ ...card, marginTop: 18 }}>
       <h2>Arc vault {treasury && <SourceBadge source={treasury.status.source} />}</h2>
-      {!treasury ? <p>Treasury not available.</p> : <>
-        <p style={{ overflowWrap: "anywhere" }}><a href={arcAddressUrl(treasury.status.vaultAddress)} target="_blank" rel="noreferrer">{treasury.status.vaultAddress}</a>{treasury.status.paused && <b style={{ color: "#a12622" }}> · PAUSED</b>}</p>
+      {!treasury ? <p className="empty-state">Treasury data is currently unavailable.</p> : <>
+        <p style={{ overflowWrap: "anywhere" }}><a href={arcAddressUrl(treasury.status.vaultAddress)} target="_blank" rel="noreferrer">{treasury.status.vaultAddress}</a>{treasury.status.paused && <b style={{ color: "#ffb489" }}> · PAUSED</b>}</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 10 }}>
           <Stat label="Balance" value={`${usdc(treasury.status.balanceUsdc6)} USDC`} />
           <Stat label="Per-tx cap" value={`${usdc(treasury.status.perTxCapUsdc6)} USDC`} />
@@ -114,7 +115,7 @@ export function LivePanels() {
           <Stat label="Spent today" value={`${usdc(treasury.status.spentTodayUsdc6)} USDC`} />
           <Stat label="Reserve floor" value={`${usdc(treasury.status.reserveFloorUsdc6)} USDC`} />
         </div>
-        <p style={{ fontSize: 13, color: "#52606d", overflowWrap: "anywhere" }}>Allowlist: {treasury.status.allowlist.join(", ") || "none"}. Arc USDC is a separate treasury; it does not fund Gemini or Derive margin.</p>
+        <p style={{ fontSize: 13, color: "#a4b5bd", overflowWrap: "anywhere" }}>Allowlist: {treasury.status.allowlist.join(", ") || "none"}. Arc USDC is a separate treasury; it does not fund Gemini or Derive margin.</p>
         {(treasury.requests ?? []).length > 0 && <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 14 }}>
           <thead><tr>{["Request", "Amount", "State", "Reason", "Tx", "Owner", "Source"].map((h) => <th key={h} style={th}>{h}</th>)}</tr></thead>
           <tbody>{treasury.requests!.map((r) => <tr key={`${r.requestId}-${r.state}`}>
@@ -128,8 +129,8 @@ export function LivePanels() {
 
     <section style={{ ...card, marginTop: 18 }}>
       <h2>Activity log</h2>
-      {events.length === 0 ? <p>No events yet.</p> : <ol style={{ paddingLeft: 18, margin: 0 }}>{events.map((e) => <li key={e.seq} style={{ marginBottom: 8 }}>
-        <span style={{ color: "#52606d", fontSize: 12 }}>{new Date(e.timestamp).toLocaleTimeString()}</span>{" "}
+      {events.length === 0 ? <p className="empty-state">Your execution and risk decisions will appear here, with a source for every event.</p> : <ol style={{ paddingLeft: 18, margin: 0 }}>{events.map((e) => <li key={e.seq} style={{ marginBottom: 8 }}>
+        <span style={{ color: "#a4b5bd", fontSize: 12 }}>{new Date(e.timestamp).toLocaleTimeString()}</span>{" "}
         <b>{e.type}</b>{e.reasonCode ? ` · ${e.reasonCode}` : ""} <SourceBadge source={e.source} />
         <div style={{ fontSize: 13 }}>{describe(e)}</div>
       </li>)}</ol>}
@@ -155,23 +156,21 @@ function MarginGauge({ margin, shock }: { margin: Margin; shock: ShockResult | n
     <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}>
       <span>Perp margin ratio <b>{ratio.toFixed(2)}</b> <SourceBadge source={margin.source} /></span>
       {projected !== null && <span>Projected after shock <b>{projected.toFixed(2)}</b> <SourceBadge source={shock!.projectedSource} /></span>}
-      <span style={{ fontSize: 13, color: "#52606d" }}>equity ${Number(margin.equityUsd).toFixed(2)} · maintenance ${Number(margin.maintenanceMarginUsd).toFixed(2)} · index ${Number(margin.indexPriceUsd).toFixed(0)}</span>
+      <span style={{ fontSize: 13, color: "#a4b5bd" }}>equity ${Number(margin.equityUsd).toFixed(2)} · maintenance ${Number(margin.maintenanceMarginUsd).toFixed(2)} · index ${Number(margin.indexPriceUsd).toFixed(0)}</span>
     </div>
-    <div style={{ position: "relative", height: 16, background: "linear-gradient(90deg,#fecaca 0%,#fecaca 40%,#fde68a 40%,#fde68a 50%,#bbf7d0 50%)", borderRadius: 8, marginTop: 8 }}>
+    <div style={{ position: "relative", height: 16, background: "linear-gradient(90deg,#563136 0%,#563136 40%,#5a4a24 40%,#5a4a24 50%,#164b40 50%)", borderRadius: 8, marginTop: 8 }}>
       {[1.2, 1.5, 2.0].map((t) => <span key={t} style={{ position: "absolute", left: pct(t), top: -2, bottom: -2, width: 1, background: "#334155" }} title={`${t}`} />)}
-      <span title="real" style={{ position: "absolute", left: pct(ratio), top: -4, width: 4, height: 24, background: "#14532d", borderRadius: 2 }} />
-      {projected !== null && <span title="projected" style={{ position: "absolute", left: pct(projected), top: -4, width: 4, height: 24, background: "#9a3412", borderRadius: 2 }} />}
+      <span title="real" style={{ position: "absolute", left: pct(ratio), top: -4, width: 4, height: 24, background: "#00d6b4", borderRadius: 2 }} />
+      {projected !== null && <span title="projected" style={{ position: "absolute", left: pct(projected), top: -4, width: 4, height: 24, background: "#ffb489", borderRadius: 2 }} />}
     </div>
-    <div style={{ fontSize: 12, color: "#52606d", marginTop: 4 }}>Thresholds: 1.2 reduce · 1.5 funding band · 2.0 target. Green bar = real ratio, orange = projected.</div>
+    <div style={{ fontSize: 12, color: "#a4b5bd", marginTop: 4 }}>Thresholds: 1.2 reduce · 1.5 funding band · 2.0 target. Green bar = real ratio, orange = projected.</div>
     {shock && <p style={{ fontSize: 14 }}>{shock.decision.action}: {shock.decision.explanation}</p>}
   </div>;
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
-  return <div style={{ background: "#fbfcfd", border: "1px solid #e5eaee", borderRadius: 10, padding: 10 }}><div style={{ fontSize: 12, color: "#52606d" }}>{label}</div><b>{value}</b></div>;
+  return <div style={{ background: "#0c151a", border: "1px solid #26373f", borderRadius: 10, padding: 10 }}><div style={{ fontSize: 12, color: "#a4b5bd" }}>{label}</div><b>{value}</b></div>;
 }
 
-const card = { background: "white", border: "1px solid #e0e5e9", borderRadius: 16, padding: 22, boxShadow: "0 6px 20px #1020300a" };
-const input = { padding: 8, borderRadius: 8, border: "1px solid #c8d0d7", font: "inherit" };
-const th = { textAlign: "left" as const, borderBottom: "1px solid #e5eaee", padding: 6, fontSize: 12, color: "#52606d" };
-const td = { borderBottom: "1px solid #f0f2f4", padding: 6, verticalAlign: "top" as const };
+const th = { textAlign: "left" as const, borderBottom: "1px solid #26373f", padding: 6, fontSize: 12, color: "#a4b5bd" };
+const td = { borderBottom: "1px solid #26373f", padding: 6, verticalAlign: "top" as const };

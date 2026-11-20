@@ -14,6 +14,8 @@ Current lane progress and blockers are tracked in [STATUS.md](STATUS.md). Demo r
 
 **Live dashboard:** https://ttp-production-7410ea00.up.railway.app · **MCP:** `https://ttp-production-7410ea00.up.railway.app/mcp` (bearer authentication).
 
+**Video walkthrough:** `/replay` presents the November 19 testnet/sandbox run using its saved order and Arc evidence. It needs no credentials and performs no trading. [Recording guide and 2:30 script](docs/VIDEO.md).
+
 Lane A/B implementation and Lane C's coordinator, monitoring/event log, dashboard and hosted MCP transport are merged into `main` through PR #28. Recorded rehearsals include filled Gemini sandbox and Derive testnet orders, an Arc approval request/cancel, and a filled reduce-only rescue order. See [rehearsal evidence](#rehearsal-evidence) and [current human tasks](docs/HUMAN-TODO.md). Credentials and hosting are configured; remaining demo constraints are sandbox liquidity, vault funding, and final video/demo preparation. Grok thesis/status acceptance is recorded in [the chat transcript](evidence/grok-chat-2026-11-19.md).
 
 The product name is Convex; repository paths, workspace package names and deployed contract identifiers retain their existing names.

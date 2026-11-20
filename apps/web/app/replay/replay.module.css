@@ -1,0 +1,44 @@
+.page { min-height: 100vh; box-sizing: border-box; padding: 0 5vw 24px; background: #080e12; color: #eef6f6; }
+.header { display: flex; align-items: center; justify-content: space-between; height: 112px; border-bottom: 1px solid #223139; }
+.logo { width: 210px; height: auto; display: block; }
+.context { display: grid; gap: 8px; text-align: right; font-size: 12px; letter-spacing: 1px; color: #a4b5bd; }
+.context b, .eyebrow { color: #00d6b4; }
+.steps { display: flex; gap: 8px; margin: 25px 0 36px; flex-wrap: wrap; }
+.page button { cursor: pointer; font: inherit; border-radius: 8px; border: 1px solid #33464f; background: transparent; color: #c9d8df; padding: 11px 16px; }
+.page button:disabled { opacity: .35; cursor: default; }
+.page button:focus-visible, .page a:focus-visible { outline: 3px solid #00d6b4; outline-offset: 4px; }
+.steps button { flex: 1; white-space: nowrap; font-size: 13px; text-align: left; }
+.steps span { margin-right: 8px; opacity: .65; }
+.steps button[aria-current] { background: #00d6b416; border-color: #00d6b4; color: #00edc7; }
+.stage { min-height: 490px; }
+.intro { margin-bottom: 28px; }
+.eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; }
+.intro h1 { font-size: clamp(28px, 3vw, 44px); line-height: 1.12; margin: 12px 0 16px; letter-spacing: -1.5px; }
+.intro > p:last-child { color: #a4b5bd; line-height: 1.6; max-width: 900px; }
+.thesis blockquote { border-left: 3px solid #00d6b4; padding: 12px 28px; margin: 0 0 28px; max-width: 900px; font-size: clamp(22px, 2.4vw, 34px); line-height: 1.5; }
+.metrics, .legs, .twoColumns { display: grid; gap: 16px; margin-bottom: 18px; }
+.metrics { grid-template-columns: repeat(3, 1fr); }
+.legs { grid-template-columns: repeat(4, 1fr); }
+.twoColumns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.card { min-width: 0; background: #101a20; border: 1px solid #26373f; padding: 22px; border-radius: 14px; }
+.card h2 { margin: 6px 0 18px; font-size: 21px; letter-spacing: -.5px; }
+.card p { line-height: 1.6; }
+.card > p:first-child { margin-top: 0; }
+.value { display: block; font-size: clamp(20px, 2.4vw, 34px); color: #f1fffc; margin-bottom: 18px; }
+.note, .footer p { color: #a4b5bd; font-size: 12px; line-height: 1.6; }
+.page code { font-size: 12px; overflow-wrap: anywhere; color: #bed3dd; }
+.page pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.7; color: #bed3dd; }
+.page a { color: #00d6b4; text-underline-offset: 4px; }
+.tableWrap { overflow-x: auto; }
+.page table { width: 100%; border-collapse: collapse; text-align: left; }
+.page th { color: #a4b5bd; font-size: 12px; font-weight: 400; }
+.page th, .page td { padding: 14px 12px; border-bottom: 1px solid #26373f; }
+.page td { font-size: 14px; }
+.success { color: #00d6b4; font-weight: 700; }
+.danger { color: #ffb489; font-weight: 700; }
+.footer { border-top: 1px solid #26373f; padding-top: 24px; margin-top: 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.footer b { font-size: 14px; }
+.controls { display: flex; gap: 12px; }
+.controls .next { background: #00d6b4; border-color: #00d6b4; color: #042920; min-width: 115px; font-weight: 700; }
+@media (max-width: 1000px) { .legs { grid-template-columns: repeat(2, 1fr); } .stage { min-height: 500px; } }
+@media (max-width: 650px) { .page { padding: 0 20px 24px; } .logo { width: 145px; } .context { font-size: 9px; } .steps button { flex: 0 1 auto; } .metrics, .legs, .twoColumns { grid-template-columns: 1fr; } .footer { align-items: flex-start; flex-direction: column; } }

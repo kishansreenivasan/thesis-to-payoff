@@ -1,11 +1,11 @@
 // Source badges (DESIGN.md Section 11): green REAL, blue LIVE DATA, orange SIMULATED, gray UNVERIFIED.
 const styles: Record<string, { label: string; background: string; color: string }> = {
-  SANDBOX: { label: "REAL · GEMINI SANDBOX", background: "#dcf5e3", color: "#14532d" },
-  TESTNET: { label: "REAL · DERIVE TESTNET", background: "#dcf5e3", color: "#14532d" },
-  ONCHAIN_TESTNET: { label: "REAL · ARC TESTNET", background: "#dcf5e3", color: "#14532d" },
-  LIVE_MAINNET_READONLY: { label: "LIVE DATA · READ ONLY", background: "#dbeafe", color: "#1e3a8a" },
-  SIMULATED: { label: "SIMULATED", background: "#ffedd5", color: "#9a3412" },
-  UNVERIFIED: { label: "UNVERIFIED", background: "#e5e7eb", color: "#374151" },
+  SANDBOX: { label: "REAL · GEMINI SANDBOX", background: "#123a30", color: "#7de3bc" },
+  TESTNET: { label: "REAL · DERIVE TESTNET", background: "#123a30", color: "#7de3bc" },
+  ONCHAIN_TESTNET: { label: "REAL · ARC TESTNET", background: "#123a30", color: "#7de3bc" },
+  LIVE_MAINNET_READONLY: { label: "LIVE DATA · READ ONLY", background: "#162e48", color: "#8bc5ff" },
+  SIMULATED: { label: "SIMULATED", background: "#3b2c1d", color: "#ffd18b" },
+  UNVERIFIED: { label: "UNVERIFIED", background: "#29343d", color: "#becbd4" },
 };
 
 export function SourceBadge({ source }: { source: string }) {

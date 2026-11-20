@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAccount, useConnect, useSwitchChain, useWriteContract } from "wagmi";
 import { arcTestnet, buildApproveRequestCall } from "@ttp/treasury/owner";
 import { api, apiBase } from "../../../lib/client";
+import { card } from "../../theme";
 
 type ReleaseRequest = {
   requestId: string;
@@ -58,9 +59,9 @@ export default function ApprovePage() {
   };
 
   return (
-    <main style={{ maxWidth: 620, margin: "48px auto", padding: 28, background: "white", borderRadius: 16, boxShadow: "0 8px 30px #10203014" }}>
-      <Link href="/" style={{ color: "#176b5b", fontWeight: 700 }}>Convex · dashboard</Link>
-      <p style={{ color: "#52606d", textTransform: "uppercase", letterSpacing: 1 }}>Arc testnet · owner approval</p>
+    <main style={{ ...card, maxWidth: 680, margin: "48px auto", padding: 28 }}>
+      <Link href="/" style={{ color: "#00d6b4", fontWeight: 700 }}>Convex · dashboard</Link>
+      <p style={{ color: "#a4b5bd", textTransform: "uppercase", letterSpacing: 1 }}>Arc testnet · owner approval</p>
       <h1>Review treasury request</h1>
       {request ? <dl style={{ display: "grid", gridTemplateColumns: "150px 1fr", gap: 12, overflowWrap: "anywhere" }}>
         <dt>Amount</dt><dd>{(Number(request.amountUsdc6) / 1_000_000).toFixed(2)} USDC</dd>
@@ -79,7 +80,7 @@ export default function ApprovePage() {
       </div>
       {txHash && <p>Approval transaction: <a href={`${arcTestnet.blockExplorers.default.url}/tx/${txHash}`} target="_blank" rel="noreferrer">view on explorer</a></p>}
       {message && <p role="status">{message}</p>}
-      <p style={{ color: "#52606d", fontSize: 13 }}>Your wallet signs the owner action. The server never receives your private key.</p>
+      <p style={{ color: "#a4b5bd", fontSize: 13 }}>Your wallet signs the owner action. The server never receives your private key.</p>
     </main>
   );
 }

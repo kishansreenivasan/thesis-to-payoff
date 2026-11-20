@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Providers } from "./providers";
+import "./globals.css";
 
 export const metadata = {
   title: "Convex",
@@ -9,7 +10,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body style={{ margin: 0, background: "#f6f7f9", color: "#17202a", fontFamily: "system-ui, sans-serif" }}>
+      <body>
         <Providers>{children}</Providers>
       </body>
     </html>
