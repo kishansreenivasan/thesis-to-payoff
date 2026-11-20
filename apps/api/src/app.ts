@@ -4,11 +4,13 @@ import { EventEmitter } from "node:events";
 import { timingSafeEqual } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import Fastify from "fastify";
+import Fastify, { type FastifyRequest } from "fastify";
+import { localOperatorAccess } from "./local-access";
 import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
 import { createMcpServer } from "@ttp/mcp";
 import { createOrderStore } from "./order-store";
 import { closePositionLegs } from "./close-position";
+import { validateEntryQuote } from "./entry-quote";
 import {
   OrderRequest,
   PositionSnapshot,
@@ -88,6 +90,7 @@ export function buildApp(deps: Dependencies = {}) {
     const supplied = Buffer.from(authorization.slice(7));
     return expected.length > 0 && supplied.length === expected.length && timingSafeEqual(supplied, expected);
   };
+  const operatorAccess = (request: FastifyRequest) => hasBearer(request.headers.authorization) || localOperatorAccess(request);
 
   let stopVaultEvents: () => void = () => {};
   if (deps.treasury) {
@@ -107,7 +110,7 @@ export function buildApp(deps: Dependencies = {}) {
     store.close();
   });
 
-  app.get("/api/health", async () => ({
+  app.get("/api/health", async (request) => ({
     ok: true,
     modes: {
       treasury: process.env.TREASURY_MODE ?? "mock",
@@ -116,6 +119,7 @@ export function buildApp(deps: Dependencies = {}) {
       strategy: process.env.STRATEGY_MODE ?? "mock",
     },
     demoMode: process.env.DEMO_MODE === "true",
+    localOperatorAccess: localOperatorAccess(request),
   }));
 
   app.post<{ Body: { text?: string } }>("/api/theses/compile", async (request, reply) => {
@@ -178,7 +182,7 @@ export function buildApp(deps: Dependencies = {}) {
   });
 
   app.post<{ Params: { id: string }; Body: { versionHash?: string } }>("/api/strategies/:id/approve", async (request, reply) => {
-    if (liveMode() && !hasBearer(request.headers.authorization)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
+    if (liveMode() && !operatorAccess(request)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
     const saved = store.getPlan(request.params.id);
     const draft = quoted.get(request.params.id) ?? (saved ? { plan: saved.plan, quotes: saved.quotes } : undefined);
     if (!draft) return reply.code(404).send({ error: "Quoted strategy not found" });
@@ -203,10 +207,13 @@ export function buildApp(deps: Dependencies = {}) {
     if (!deps.venues) return reply.code(503).send({ error: "Venue service is not available" });
     const mockExecution = demoMode() && (process.env.VENUES_MODE ?? "mock") === "mock";
     const liveExecution = liveMode();
-    if (liveExecution && !hasBearer(request.headers.authorization)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
+    if (liveExecution && !operatorAccess(request)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
     if (!mockExecution && !liveExecution) {
       return reply.code(503).send({ error: "Execution requires mock demo mode or both real venue and strategy modes" });
     }
+    if (positionActions.size) return reply.code(409).send({ error: "A position action is already in progress. Wait for it to finish." });
+    positionActions.add(draft.plan.strategyId);
+    try {
 
     if (liveExecution) {
       const required = ["DERIVE_WALLET", "DERIVE_SIGNER_PRIVATE_KEY", "DERIVE_MAIN_SUBACCOUNT_ID", "DERIVE_PERP_SUBACCOUNT_ID", "GEMINI_SANDBOX_KEY", "GEMINI_SANDBOX_SECRET"];
@@ -224,13 +231,10 @@ export function buildApp(deps: Dependencies = {}) {
       }
     }
 
-    const orders: Order[] = [];
-    try {
-      const executionOrder = ["L3b", "L1", "L2"];
-      const realLegs = draft.plan.legs.filter((item) => item.executionMode === "REAL")
-        .sort((a, b) => executionOrder.indexOf(a.legId) - executionOrder.indexOf(b.legId));
-      for (const leg of realLegs) {
-        const order = OrderRequest.parse({
+    const executionOrder = ["L3b", "L1", "L2"];
+    const orderRequests = draft.plan.legs.filter((item) => item.executionMode === "REAL")
+      .sort((a, b) => executionOrder.indexOf(a.legId) - executionOrder.indexOf(b.legId))
+      .map((leg) => OrderRequest.parse({
           clientOrderId: `${draft.plan.strategyId}-${draft.plan.revision}-r${store.runId()}-${leg.legId}`,
           strategyId: draft.plan.strategyId,
           legId: leg.legId,
@@ -246,7 +250,19 @@ export function buildApp(deps: Dependencies = {}) {
           // rehearsal: no fill, REJECTED). Allow the perp entry up to 0.5% through the quote.
           limitPrice: liveMode() && leg.venue === "DERIVE" && leg.instrumentId.includes("PERP") ? perpEntryLimit(leg.side, leg.limitPrice) : leg.limitPrice,
           reduceOnly: false,
-        });
+      }));
+    const checkQuote = async (order: OrderRequest) => {
+      if (!liveExecution) return;
+      const quote = Quote.parse(await deps.venues!.getQuote(order.venue, order.instrumentId.replace(/:(YES|NO)$/, ""), order.venue === "GEMINI" ? "sandbox" : "testnet"));
+      validateEntryQuote(order, quote);
+    };
+    // Validate every leg before opening the first, then refresh again just before each send.
+    try { await Promise.all(orderRequests.map(checkQuote)); }
+    catch (error) { return reply.code(409).send({ error: error instanceof Error ? error.message : "Could not refresh executable quotes" }); }
+    const orders: Order[] = [];
+    let executionError: string | null = null;
+    try {
+      for (const order of orderRequests) {
         const prior = store.getOrder(order.clientOrderId);
         if (prior?.order) {
           orders.push(prior.order);
@@ -261,6 +277,7 @@ export function buildApp(deps: Dependencies = {}) {
           if (recovered.state !== "FILLED") break;
           continue;
         }
+        await checkQuote(order);
         store.saveSubmitting(order);
         const placed = await deps.venues.placeOrder(order);
         store.saveOrder(placed);
@@ -269,32 +286,40 @@ export function buildApp(deps: Dependencies = {}) {
         if (placed.state !== "FILLED") break;
       }
     } catch (error) {
-      for (const order of orders) {
-        if (order.state !== "FILLED") await deps.venues.cancelOrder(order.venue, order.clientOrderId).catch(() => undefined);
+      for (let i = 0; i < orders.length; i++) {
+        const order = orders[i]!;
+        if (order.state !== "FILLED") {
+          const canceled = await deps.venues.cancelOrder(order.venue, order.clientOrderId).catch(() => null);
+          if (canceled) { store.saveOrder(canceled); orders[i] = canceled; }
+        }
       }
-      return reply.code(502).send({ error: error instanceof Error ? error.message : "Order execution failed", orders });
+      executionError = error instanceof Error ? error.message : "Order execution failed";
     }
 
-    const [mainPositions, perpPositions, margin] = await Promise.all([
+    const [mainRead, perpRead, marginRead] = await Promise.allSettled([
       deps.venues.getPositions("DERIVE", "main"),
       deps.venues.getPositions("DERIVE", "perp"),
       deps.venues.getMargin("perp"),
     ]);
+    const mainPositions = mainRead.status === "fulfilled" ? mainRead.value : [];
+    const perpPositions = perpRead.status === "fulfilled" ? perpRead.value : [];
     const snapshot = PositionSnapshot.parse({
       positionId: `pos_${draft.plan.strategyId}`,
       strategyId: draft.plan.strategyId,
-      state: orders.every((order) => order.state === "FILLED") ? "OPEN" : "PARTIAL",
-      riskState: "NORMAL",
+      state: !executionError && orders.length === orderRequests.length && orders.every((order) => order.state === "FILLED") ? "OPEN" : "PARTIAL",
+      riskState: marginRead.status === "fulfilled" ? "NORMAL" : "FAILED_SAFE",
       orders,
       positions: [...mainPositions, ...perpPositions],
-      margins: [margin],
+      margins: marginRead.status === "fulfilled" ? [marginRead.value] : [],
       estimatedPnlUsd: "0",
       updatedAt: new Date().toISOString(),
     });
     positions.set(request.params.id, snapshot);
     store.savePosition(request.params.id, snapshot);
     recordEvent({ timestamp: snapshot.updatedAt, positionId: snapshot.positionId, type: "POSITION_UPDATED", reasonCode: snapshot.state, details: { strategyId: snapshot.strategyId, state: snapshot.state, orders: snapshot.orders.length }, source: liveExecution ? "TESTNET" : "SIMULATED" });
+    if (executionError) return reply.code(502).send({ error: `Execution stopped: ${executionError}. Review the saved partial position before retrying.`, position: snapshot, orders });
     return snapshot;
+    } finally { positionActions.delete(draft.plan.strategyId); }
   });
 
   app.get("/api/positions", async () => store.listPositions()
@@ -311,7 +336,7 @@ export function buildApp(deps: Dependencies = {}) {
 
   app.post<{ Params: { id: string } }>("/api/positions/:id/close", async (request, reply) => {
     const realVenues = process.env.VENUES_MODE === "real";
-    if (realVenues && !hasBearer(request.headers.authorization)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
+    if (realVenues && !operatorAccess(request)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
     if (!realVenues && !(demoMode() && (process.env.VENUES_MODE ?? "mock") === "mock")) return reply.code(503).send({ error: "Closing requires configured real venues or mock demo mode" });
     if (!deps.venues) return reply.code(503).send({ error: "Venue service is not available" });
     const strategyId = request.params.id.replace(/^pos_/, "");
@@ -485,7 +510,7 @@ export function buildApp(deps: Dependencies = {}) {
   });
 
   app.post<{ Params: { id: string }; Body: { shockPct?: string } }>("/api/positions/:id/monitor", async (request, reply) => {
-    if (liveMode() && !hasBearer(request.headers.authorization)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
+    if (liveMode() && !operatorAccess(request)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
     const shockPct = request.body?.shockPct ?? "-8";
     if (!/^-?\d+(\.\d+)?$/.test(shockPct)) return reply.code(400).send({ error: "shockPct must be a decimal string" });
     try { return await monitorPosition(request.params.id, shockPct); }
@@ -494,7 +519,7 @@ export function buildApp(deps: Dependencies = {}) {
 
   app.post<{ Params: { id: string }; Body: { shockPct?: string } }>("/api/demo/:id/shock", async (request, reply) => {
     if (!demoMode()) return reply.code(403).send({ error: "Shock controls are available only in demo mode" });
-    if (liveMode() && !hasBearer(request.headers.authorization)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
+    if (liveMode() && !operatorAccess(request)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
     const shockPct = request.body?.shockPct ?? "-8";
     if (!/^-?\d+(\.\d+)?$/.test(shockPct)) return reply.code(400).send({ error: "shockPct must be a decimal string" });
     demoShocks.set(request.params.id.startsWith("pos_") ? request.params.id.slice(4) : request.params.id, shockPct);
@@ -507,7 +532,7 @@ export function buildApp(deps: Dependencies = {}) {
   // venue positions or the vault.
   app.post("/api/demo/reset", async (request, reply) => {
     if (!demoMode()) return reply.code(403).send({ error: "Reset is available only in demo mode" });
-    if (liveMode() && !hasBearer(request.headers.authorization)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
+    if (liveMode() && !operatorAccess(request)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
     if (positionActions.size) return reply.code(409).send({ error: "Wait for the position action to finish before resetting." });
     quoted.clear(); approvals.clear(); positions.clear(); rescueRequests.clear(); riskStates.clear(); demoShocks.clear();
     const runId = store.reset();
@@ -519,7 +544,7 @@ export function buildApp(deps: Dependencies = {}) {
   // Gemini sandbox contracts are left to settle. DEMO_MODE only; bearer required with live venues.
   app.post("/api/demo/flatten", async (request, reply) => {
     if (!demoMode()) return reply.code(403).send({ error: "Flatten is available only in demo mode" });
-    if (liveMode() && !hasBearer(request.headers.authorization)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
+    if (liveMode() && !operatorAccess(request)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
     if (!deps.venues) return reply.code(503).send({ error: "Venue service is not available" });
     if (positionActions.size) return reply.code(409).send({ error: "A position action is already in progress" });
     positionActions.add("demo_flatten");
@@ -595,7 +620,7 @@ export function buildApp(deps: Dependencies = {}) {
   });
 
   app.post<{ Params: { id: string } }>("/api/treasury/requests/:id/decline", async (request, reply) => {
-    if (liveMode() && !hasBearer(request.headers.authorization)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
+    if (liveMode() && !operatorAccess(request)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
     if (!deps.treasury) return reply.code(503).send({ error: "Treasury service is not available" });
     try {
       const result = deps.decideMockRequest && process.env.DEMO_MODE === "true" && (process.env.TREASURY_MODE ?? "mock") === "mock"

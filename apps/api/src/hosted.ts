@@ -11,6 +11,7 @@ import { strategy } from "@ttp/strategy";
 import { simulateOwnerDecision, treasury } from "@ttp/treasury";
 import { venues } from "@ttp/venues";
 import { buildApp } from "./app";
+import { apiHost } from "./local-access";
 
 type NextApp = { prepare(): Promise<void>; getRequestHandler(): (req: IncomingMessage, res: ServerResponse) => Promise<void> };
 
@@ -29,7 +30,7 @@ async function main() {
   app.route({ method: ["GET", "HEAD"], url: "/", handler: toNext });
   app.route({ method: ["GET", "HEAD"], url: "/*", handler: toNext });
   const port = Number(process.env.PORT ?? 4000);
-  await app.listen({ port, host: "0.0.0.0" });
+  await app.listen({ port, host: apiHost() });
 }
 
 main().catch((error) => {
