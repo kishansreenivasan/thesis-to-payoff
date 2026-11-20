@@ -13,3 +13,4 @@ contracts/broadcast/
 coverage/
 
 *.tsbuildinfo
+data/

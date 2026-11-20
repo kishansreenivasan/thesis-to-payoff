@@ -42,6 +42,7 @@ export function createOrderStore(path = process.env.DATABASE_PATH ?? "./data/ttp
       source TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS events_position_seq_idx ON events(position_id, seq);
+    CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   `);
 
   const strategy = db.prepare("SELECT * FROM strategies WHERE strategy_id = ?");
@@ -100,6 +101,19 @@ export function createOrderStore(path = process.env.DATABASE_PATH ?? "./data/ttp
     listPositions() {
       const rows = db.prepare("SELECT strategy_id, position_json FROM strategies WHERE position_json IS NOT NULL").all() as Array<{ strategy_id: string; position_json: string }>;
       return rows.map((row) => ({ strategyId: row.strategy_id, position: JSON.parse(row.position_json) as PositionSnapshot }));
+    },
+    /** Run id included in client order ids; demo:reset bumps it so venues never see a reused label. */
+    runId(): number {
+      const row = db.prepare("SELECT value FROM meta WHERE key='run_id'").get() as { value: string } | undefined;
+      return row ? Number(row.value) : 1;
+    },
+    reset(): number {
+      const next = this.runId() + 1;
+      db.transaction(() => {
+        db.exec("DELETE FROM strategies; DELETE FROM orders; DELETE FROM events;");
+        db.prepare("INSERT INTO meta (key, value) VALUES ('run_id', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(String(next));
+      })();
+      return next;
     },
     close() { db.close(); },
   };

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAccount, useConnect, useSwitchChain, useWriteContract } from "wagmi";
 import { arcTestnet, buildApproveRequestCall } from "@ttp/treasury/owner";
+import { api, apiBase } from "../../../lib/client";
 
 type ReleaseRequest = {
   requestId: string;
@@ -16,7 +17,6 @@ type ReleaseRequest = {
   reasonCode: string | null;
   source: string;
 };
-const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
 
 export default function ApprovePage() {
   const params = useParams<{ requestId: string }>();
@@ -46,11 +46,14 @@ export default function ApprovePage() {
   };
   const decline = async () => {
     setMessage("Recording decline…");
-    const response = await fetch(`${apiBase}/api/treasury/requests/${requestId}/decline`, { method: "POST" });
-    const body = await response.json();
-    if (!response.ok) { setMessage(body.error ?? "Could not decline request."); return; }
-    setRequest(body as ReleaseRequest);
-    setMessage("Request declined. The agent will follow its reduce-only rescue path if needed.");
+    try {
+      const body = await api<ReleaseRequest & { followUp?: { decision?: { action: string; explanation: string }; reduceOrder?: { state: string; venueOrderId: string | null; source: string } | null } | null }>(`/api/treasury/requests/${requestId}/decline`, { method: "POST" });
+      setRequest(body);
+      const order = body.followUp?.reduceOrder;
+      setMessage(order
+        ? `Request declined. Agent placed a reduce-only order on the Derive perp: ${order.state}, venue order ${order.venueOrderId ?? "pending"} (source ${order.source}).`
+        : `Request declined. ${body.followUp?.decision?.explanation ?? "The agent will follow its reduce-only rescue path if needed."}`);
+    } catch (e) { setMessage(e instanceof Error ? e.message : "Could not decline request."); }
   };
 
   return (

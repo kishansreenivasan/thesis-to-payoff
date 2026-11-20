@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@tanstack/react-query": "5.108.0",
     "@ttp/shared": "workspace:*",
     "@ttp/treasury": "workspace:*",
     "next": "^15.0.3",

@@ -7,7 +7,7 @@ export interface McpActions {
   quotePayoff(text: string): Promise<unknown>;
   approveStrategy(strategyId: string, versionHash: string): Promise<unknown>;
   executeStrategy(strategyId: string): Promise<unknown>;
-  positionStatus(id: string): Promise<unknown>;
+  positionStatus(id?: string): Promise<unknown>;
   transferRequestStatus(requestId: string): Promise<unknown>;
 }
 
@@ -44,8 +44,8 @@ export function createMcpServer(actions: McpActions) {
     inputSchema: z.object({ strategyId: z.string().min(1) }),
   }, ({ strategyId }) => call(() => actions.executeStrategy(strategyId)));
   server.registerTool("position_status", {
-    description: "Read the current position and margin snapshot.",
-    inputSchema: z.object({ id: z.string().min(1) }),
+    description: "Read the position (latest one if no id), its margin and risk state, and any open Arc approval requests with the owner approval link. Use for \"what's my status?\".",
+    inputSchema: z.object({ id: z.string().min(1).optional() }),
   }, ({ id }) => call(() => actions.positionStatus(id)));
   server.registerTool("transfer_request_status", {
     description: "Read an Arc release request. This tool cannot approve transfers.",

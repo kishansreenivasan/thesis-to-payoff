@@ -1,0 +1,10 @@
+Rescue-band calibration  (VENUES_MODE=real, source TESTNET, READ ONLY)
+  perp position      0.0172 BTC (BTC-PERP)
+  index price        $61859.10
+  equity (gross)     $229.96
+  maintenance req.   $53.20   (gross = value - Derive's net maintenance_margin)
+  current ratio      4.3226
+  after -15% shock  loss $159.60 -> equity $70.36 -> projected ratio 1.3226  IN rescue band [1.2, 1.5)
+  band needs equity  $223.44 up to (not incl.) $239.40
+  target 1.35 equity  $231.42
+  -> DEPOSIT about $1.46 test USDC in the perp subaccount (a human does this in the Derive testnet app)
