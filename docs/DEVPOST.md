@@ -1,53 +1,91 @@
-# Devpost submission draft
+# Convex — Devpost draft
+
+**Status:** draft only; this file does not publish or change the Devpost form.
 
 **Track:** DeFi and Onchain Applications · **Chain award:** Arc · **Bounties:** Gemini Prediction Markets, Grok
 
-**Links:** repo https://github.com/kishansreenivasan/thesis-to-payoff · live app `<PUBLIC_BASE_URL>` · video `<link>` · vault [`0x1e9B…5E07` on Arc testnet](https://explorer.testnet.arc.io/address/0x1e9B755C7caA3d1D007d70A7cF77E93cc6A65E07)
+**Links:**
+- Repository: https://github.com/kishansreenivasan/thesis-to-payoff
+- Live demo: https://ttp-production-7410ea00.up.railway.app
+- Logo: [selected Convex logo](../apps/web/public/convex-logo.png)
+- MCP connector: `https://ttp-production-7410ea00.up.railway.app/mcp` (bearer authentication; never publish the token)
+- Video: TODO — record and add the final URL
+- Vault: [Arc testnet deployment](https://explorer.testnet.arc.io/address/0x1e9B755C7caA3d1D007d70A7cF77E93cc6A65E07)
+- Grok chat: TODO — teammate with Grok access follows [GROK-HANDOFF.md](GROK-HANDOFF.md) and supplies a redacted export
 
-## Tagline
+## Elevator pitch (200-character field)
 
-Type a market view in plain English. Get a bounded multi-venue position, managed by an agent whose spending is limited onchain.
+Have a market view, but no plan for being wrong? Our agent builds hedged strategies across options, perps, and prediction markets, automating execution and risk monitoring.
 
 ## Inspiration
 
-Retail traders think in theses ("bullish BTC, but worried about the Fed"), not in option chains, perps and event contracts across three venues. Agents that trade for you are only safe if their access to money is bounded by something stronger than a prompt.
+Having a market opinion is easy. Turning it into a position you understand—and planning for being wrong—is harder.
+
+An investor might say, "I'm bullish on Bitcoin, but I'm worried about the Fed." Acting on that view means selecting instruments, sizing positions, pricing hedges, and managing margin across platforms. Beginners face a steep learning curve; experienced traders spend time coordinating the same moving parts manually.
+
+Convex closes that gap. You bring the thesis and risk budget; Convex structures, prices and coordinates a supported strategy.
 
 ## What it does
 
-You tell Grok your view and your max risk. Our MCP server validates the fields Grok extracts, and deterministic code builds a four-leg plan: a BTC call and a small perp on Derive testnet, a real NO contract on a Gemini sandbox BTC market as a downside hedge, and a Fed-hike hedge priced live from Gemini's mainnet prediction market (simulated position, since the sandbox does not list it). You see the payoff by Fed outcome, approve the exact plan version, and the agent places real testnet and sandbox orders.
+Convex starts with a supported bullish Bitcoin thesis, an optional Fed-hike concern and an explicit risk budget. Deterministic code builds a coordinated plan: a BTC call and perpetual on Derive testnet, a Gemini sandbox BTC NO contract, and a Fed-hike position simulated using live mainnet pricing. It shows the costs and modeled payoff scenarios, then requires approval of the exact plan version before submitting executable legs.
 
-Then it manages the risk. When a price shock pushes the perp's projected margin ratio below 1.5, the agent asks an Arc testnet vault for a top-up. The vault enforces its own rules: per-transaction cap, daily cap, per-strategy cap, reserve floor, allowlisted destination, guardian pause. An over-cap release reverts onchain and becomes an approval request that only the owner's wallet can sign. If the owner declines, the agent trims the perp with a real reduce-only order. Every number on the dashboard carries a source badge: real testnet, sandbox, live read-only, or simulated.
+After execution, the risk engine evaluates margin under stress. A release over the Arc vault's cap reverts onchain and becomes an owner approval request. In the recorded decline path, cancellation is followed by a filled reduce-only Derive order. The vault enforces spending authority; the owner's wallet signs owner approvals.
+
+The application is deployed on Railway. Recorded real testnet/sandbox rehearsals include all three executable legs filled, calibration, an Arc request/cancel and a filled rescue order. The stress shock and Fed position remain simulated, and Arc releases go to a settlement wallet rather than crediting venue margin.
 
 ## How we built it
 
-- TypeScript pnpm monorepo, three parallel lanes with a shared Zod schema contract.
-- **Arc:** a Solidity `ThesisTreasuryVault` (Foundry, 19 tests including a 1000-run fuzz of the daily cap), deployed on Arc testnet, driven with viem. The owner approval page uses wagmi; the owner key never touches the server.
-- **Gemini:** prediction-market discovery, live mainnet quotes, and signed sandbox orders (lossless parsing of order ids above 2^53).
-- **Derive testnet:** EIP-712-signed option and perp orders, net-to-gross margin conversion, and recovery from read-after-write lag.
-- **Grok:** a remote MCP server (Streamable HTTP, bearer auth) exposing `compile_thesis`, `quote_payoff`, `approve_strategy`, `execute_strategy`, `position_status` and `transfer_request_status`. No LLM runs on our server; model output never sets a number.
-- Fastify orchestrator with an append-only SQLite order and event log, a 10-second risk monitor, and a Next.js dashboard, all served from one Railway service.
+We divided development into treasury/risk, venues/strategy, and orchestration/interface lanes, using shared Zod schemas to keep their contracts aligned.
 
-## Challenges
+- **Arc:** a deployed Solidity treasury vault with per-transaction, daily and strategy caps, a reserve floor, destination allowlist and pause controls. Foundry tests cover its constraints; viem and Wagmi support chain interactions and owner wallet approval.
+- **Gemini Prediction Markets:** sandbox discovery and signed BTC event orders, plus live read-only Fed-market quotes. Lossless parsing preserves large venue order identifiers.
+- **Derive:** testnet BTC option and perpetual orders signed with EIP-712, margin reads and reduce-only execution.
+- **Grok-compatible MCP:** seven tools expose thesis validation, event discovery, quoting, strategy approval/execution and position/transfer status through authenticated Streamable HTTP. Our server hosts the tools; Grok runs in the teammate's account. No Grok/xAI API key or server-side LLM is required. The hosted tool listing is verified; Grok chat acceptance/export remains assigned to that teammate.
+- **Application stack:** TypeScript, pnpm workspaces, Next.js, React, Fastify, SQLite/better-sqlite3, Zod, decimal.js, and the MCP TypeScript SDK. Docker and Railway host the API, dashboard and MCP at one origin. Vitest and Foundry provide automated validation.
 
-- Deribit testnet sign-up was unavailable to us, so we moved the option and perp legs to Derive testnet two days in.
-- The Fed contract is not listed in Gemini's sandbox, so we split the hedge into a live-priced simulated leg and a real sandbox BTC leg, and labelled both honestly.
-- Arc test USDC is also the gas token, so moving it moves gas; the vault and scripts keep buffers.
-- Testnet books are thin: orders are sized to displayed liquidity and unfilled remainders are cancelled.
+SQLite persists order submissions and venue identifiers before execution, alongside position snapshots and an append-only activity log. A 10-second risk monitor and server-sent events keep the dashboard updated.
 
-## Accomplishments
+## Challenges we ran into
 
-Real orders on two venues plus real onchain reverts, requests and owner approvals, all in one flow where an AI agent can act alone only inside limits a smart contract enforces.
+Our original derivatives venue became unavailable, so we moved to Derive and adapted signing, instrument names, minimum sizes and margin conventions.
+
+Real rehearsals exposed delayed order visibility, thin books and minimum-size constraints on rescue orders. We added persistent order tracking and recovered venue states, while preserving exact large Gemini identifiers. Repeated sandbox fills eventually exhausted the available YES bids; fresh strategy opening is currently blocked until liquidity returns.
+
+Gemini's sandbox does not list the Fed market. We retained a live-priced simulated Fed leg and clearly labeled it alongside the real sandbox BTC leg. Arc test USDC also serves as gas, making wallet reserves and funding checks necessary.
+
+## Accomplishments that we're proud of
+
+We integrated three development lanes into a deployed workflow with actual fills on Derive testnet and Gemini sandbox. The committed open/reopen recordings report all executable legs FILLED and the position OPEN.
+
+Our rescue recording shows an Arc owner-approval request, its cancellation after decline, and a FILLED reduce-only Derive order. Separate Arc evidence records allowed releases, over-limit reverts, owner-approved execution and pause controls. We distinguish those earlier owner-approval transactions from the coordinated rehearsal's decline path.
+
+We also shipped a dashboard with venue/source labels, real versus projected margin, an activity stream, owner approval links and authenticated operator controls.
 
 ## What we learned
 
-Spending rules belong onchain, not in the prompt. And honest labelling of real versus simulated values made the demo more convincing, not less.
+Financial automation depends on precise boundaries between systems. A successful request does not establish a fill, a treasury release does not credit exchange margin, and a modeled loss budget cannot guarantee losses in every market condition.
 
-## What's next
+Those lessons shaped Convex around deterministic calculations, explicit approvals, durable execution records and visible source labels. Spending authority belongs in enforceable contract rules, and a live demonstration needs evidence for every claimed action.
 
-List the Fed market in the Gemini sandbox for a fully real hedge, real cross-venue funding once venues accept onchain deposits, and Telegram alerts for approval requests.
+## What's next for Convex
 
-## Written answers
+Our immediate priorities are the teammate's Grok acceptance/chat export, final screenshots and video, and a fresh staged demo when sandbox liquidity and treasury funding permit. Hosted MCP access is already configured; no new xAI API key is required.
 
-- **How is Arc used?** One vault holds the treasury and enforces per-tx, daily, per-strategy and reserve limits, an allowlist and a pause onchain. The agent releases within limits by itself; anything over reverts and needs the owner's wallet signature. Arc USDC does not fund the venues: releases go to a settlement wallet, and venue credit is shown as simulated.
-- **How are Gemini Prediction Markets used?** Live mainnet Fed-decision prices drive the hedge sizing and payoff (simulated position), and a real sandbox order buys NO on a BTC price market as a downside hedge.
-- **How is Grok used?** Grok is the user interface through our hosted MCP server. It extracts thesis fields and reports status and approval links; it cannot approve transfers or sign.
+Next we would improve strategy explanations and scenario comparison, add risk alerts and validate additional supported strategies and instruments. Any cross-venue funding capability would require a separate integration; this prototype's Arc vault does not fund either venue.
+
+## Evidence and demo readiness
+
+- [Open](../evidence/rehearsal-2026-11-19-open.json) / [reopen](../evidence/rehearsal-2026-11-19-reopen.json): filled sandbox and testnet legs.
+- [Calibration](../evidence/rehearsal-2026-11-19-calibrate.txt): a real margin read with a simulated -15% stress projecting a 1.3226 ratio.
+- [Rescue](../evidence/rehearsal-2026-11-19-rescue.json): Arc request/cancel and filled reduce-only order.
+- [Demo/video runbook](DEMO-SCRIPT.md): preserve existing positions when liquidity is scarce.
+- Last vault read: 22 USDC total, 12 above reserve. Funding readiness must be rechecked before a new full release rehearsal.
+- Testnet/sandbox only. The Fed position and projected stress values are simulated; no profit, loss ceiling or liquidation-prevention guarantee is made.
+
+## Sponsor answers
+
+**How is Arc used?** One vault enforces transfer authority onchain, with normal releases subject to caps, allowlisting and a reserve floor, and a separate owner-approved path. The owner key stays off the server. Releases reach a settlement wallet; any modeled venue credit is labeled simulated and does not change reported margin.
+
+**How are Gemini Prediction Markets used?** Live read-only mainnet Fed-decision prices inform the simulated Fed leg and payoff grid. Real Gemini sandbox NO orders supply the executable BTC event leg, subject to available liquidity.
+
+**How is Grok used?** The hosted MCP endpoint is ready for the teammate's Grok session to call thesis, strategy and status tools. Grok supplies structured thesis fields; deterministic code selects prices, instruments and quantities. The teammate must still confirm the chat workflow and supply its redacted export. Grok cannot sign owner approvals.

@@ -169,3 +169,8 @@ Format:
   - After a reduce-only fill, margin is re-read at 10 s and 25 s (Derive read lag).
   - New `POST /api/demo/flatten`.
 - Evidence: `evidence/rehearsal-2026-11-19-*.json`.
+
+## [Lane C] Convex branding and current handoff (APPLIED)
+- When: 2026-11-20 00:39 UTC
+- What: selected teal payoff-curve logo is served from `apps/web/public/convex-logo.png`; dashboard, metadata, approval navigation and README use Convex. Submission and human/lane handoffs now reflect PR #28 deployment and real rehearsal evidence. `docs/GROK-HANDOFF.md` assigns Grok acceptance/export to the teammate with access and documents that no xAI API key is needed.
+- Why: align the product identity and remove stale credential/hosting blockers while preserving simulation labels and liquidity/funding constraints. Repository/package/contract names are unchanged.

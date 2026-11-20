@@ -16,6 +16,16 @@ Append new entries at the top. Format: DESIGN.md Section 14. Humans fill in "Dec
 
 ---
 
+## [Lane C] Current blocker reconciliation after PR #28 (NOTED)
+- When: 2026-11-20 00:39 UTC
+- Task: reconcile historical credential/hosting blockers with the merged deployment and rehearsal evidence
+- Actual: required local settings are populated; Railway dashboard/health and authenticated MCP tool listing succeed. Recorded testnet/sandbox fills, calibration, Arc request/cancel and reduce-only rescue are in `evidence/rehearsal-2026-11-19-*`.
+- Evidence: PR #28, `STATUS.md`, `docs/GROK-HANDOFF.md`, rehearsal files
+- Resolution: the older hosted-deployment and missing-Derive-access entries below are historical and superseded by this entry. Vault funding remains a repeat-rehearsal constraint, not evidence that the recorded rehearsal failed.
+- Still open: checked BTC sandbox contracts have no YES bids; last vault read left 12 USDC above reserve; teammate Grok acceptance/export and final video remain.
+- Meanwhile: Convex branding and submission documentation can proceed without trades or transfers.
+- Decision (filled by humans): use the teammate's Grok account; no xAI API key is needed on the server.
+
 ## [Lane C/B] Gemini sandbox BTC2611302200 has no YES bids, so no L3b plan (OPEN)
 - When: 2026-11-20 00:15 UTC
 - Task: `pnpm demo:open` against the hosted server (real mode)

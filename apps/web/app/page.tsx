@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Image from "next/image";
 import { apiBase } from "../lib/client";
 import { SourceBadge } from "./badge";
 import { LivePanels } from "./live-panels";
@@ -30,7 +31,11 @@ export default function Page() {
   const binary = result?.quotes.find((q) => q.venue === "GEMINI" && q.instrumentId.includes("BTC2611302200"));
 
   return <main style={{ maxWidth: 1120, margin: "0 auto", padding: "42px 24px 80px" }}>
-    <header style={{ marginBottom: 28 }}><p style={{ color: "#496b58", fontWeight: 700, letterSpacing: 1 }}>TESTNET + SANDBOX ONLY</p><h1 style={{ fontSize: 38, margin: "8px 0" }}>Thesis-to-Payoff</h1><p>Turn a supported BTC view into a bounded multi-leg plan and inspect its risk before approval.</p></header>
+    <header style={{ marginBottom: 28, padding: "0 24px 24px", borderRadius: 16, background: "#080e12", color: "#f8fafc", textAlign: "center" }}>
+      <h1 style={{ margin: 0 }}><Image src="/convex-logo.png" alt="Convex" width={1774} height={887} priority style={{ display: "block", width: "100%", maxWidth: 520, height: "auto", margin: "0 auto" }} /></h1>
+      <p style={{ color: "#00d6b4", fontWeight: 700, letterSpacing: 1 }}>TESTNET + SANDBOX ONLY</p>
+      <p style={{ marginBottom: 0 }}>Your market view. A strategy with a plan for being wrong.</p>
+    </header>
     <section style={card}><h2>Thesis and plan</h2><form onSubmit={quote}><label htmlFor="thesis">Describe your market view</label><textarea id="thesis" rows={3} value={text} onChange={(e) => setText(e.target.value)} style={{ ...input, display: "block", width: "100%", margin: "10px 0" }} /><button disabled={busy}>{busy ? "Getting quotes…" : "Build plan and payoff"}</button></form>{error && <p role="alert" style={{ color: "#a12622" }}>{error}</p>}
       {result && <><p><b>Strategy</b> {result.plan.strategyId} · modeled max loss ${result.plan.modeledMaxLossUsd}</p><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 10 }}>{result.plan.legs.map((leg) => <article key={leg.legId} style={subcard}><b>{leg.legId} · {leg.venue}</b><p>{leg.instrumentId}</p><small>{leg.quantity} at {leg.limitPrice} · {leg.executionMode}</small></article>)}</div></>}
     </section>
