@@ -16,6 +16,14 @@ Append new entries at the top. Format: DESIGN.md Section 14. Humans fill in "Dec
 
 ---
 
+## [Lane C] Grok acceptance follow-up (RESOLVED)
+- When: 2026-11-20 00:51 UTC
+- Task: verify Grok invokes the hosted Convex tools and preserve a redacted conversation
+- Actual: connector reports Connected; response activity shows Compiled thesis and Positioned status. Compilation preserves the explicit $500 input; status correctly returns no open position.
+- Evidence: `evidence/grok-chat-2026-11-19.md` (Markdown UI transcript)
+- Resolution: the initial Grok access/acceptance/transcript dependency in older notes is complete. Showing a pending request inside Grok still depends on the next prepared demo state.
+- Decision: user approved account linking and storing the existing bearer in the Grok connector; no xAI API key is required.
+
 ## [Lane C] Current blocker reconciliation after PR #28 (NOTED)
 - When: 2026-11-20 00:39 UTC
 - Task: reconcile historical credential/hosting blockers with the merged deployment and rehearsal evidence
