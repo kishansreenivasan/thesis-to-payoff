@@ -76,6 +76,10 @@ export function createOrderStore(path = process.env.DATABASE_PATH ?? "./data/ttp
       const row = db.prepare("SELECT * FROM orders WHERE client_order_id=?").get(clientOrderId) as { request_json: string; order_json: string | null; state: string; venue_order_id: string | null } | undefined;
       return row ? { request: JSON.parse(row.request_json) as OrderRequest, order: row.order_json ? JSON.parse(row.order_json) as Order : null, state: row.state, venueOrderId: row.venue_order_id } : null;
     },
+    listOrders(strategyId: string) {
+      const rows = db.prepare("SELECT client_order_id FROM orders WHERE strategy_id=? ORDER BY created_at, client_order_id").all(strategyId) as Array<{ client_order_id: string }>;
+      return rows.map((row) => this.getOrder(row.client_order_id)!);
+    },
     appendEvent(event: Omit<import("@ttp/shared").ActivityEvent, "seq">) {
       const result = db.prepare(`INSERT INTO events (timestamp, position_id, type, reason_code, details_json, source)
         VALUES (@timestamp, @positionId, @type, @reasonCode, @details, @source)`).run({

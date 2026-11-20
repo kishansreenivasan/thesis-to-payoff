@@ -1,7 +1,7 @@
 // Lane A's Arc-side integration tests (DESIGN.md Section 17). Default: mock mode, runs in CI.
 // The real-vault variant at the bottom only runs with TREASURY_LIVE=1 and never moves funds
 // (an over-cap release reverts, a request is cancelled before anyone approves it).
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MarginSnapshot, RiskInput, type ActivityEvent, type Order } from "@ttp/shared";
 import { evaluateRisk } from "../../packages/risk/src/evaluateRisk";
 import { createMockVenues } from "../../packages/venues/src/index";
@@ -43,6 +43,30 @@ async function openDemoPosition() {
 describe("Arc rescue, mock mode: revert -> request -> decline -> reduce-only", () => {
   beforeEach(() => {
     process.env.DEMO_MODE = "true";
+  });
+
+  it("a user exit cancels the funding request and closes the held legs", async () => {
+    const { app, venues, post, id } = await openDemoPosition();
+    try {
+      const first = await post<Shock>(`/api/demo/${id}/shock`, { shockPct: "-15" });
+      const result = await post<{ position: { state: string }; requestError: string | null }>(`/api/positions/${id}/close`);
+      expect(result).toMatchObject({ position: { state: "CLOSED" }, requestError: null });
+      expect((await treasuryMock.getReleaseStatus(first.transferRequest!.requestId)).state).toBe("REJECTED");
+      expect(await venues.getPositions("DERIVE", "perp")).toEqual([]);
+      expect(await venues.getPositions("GEMINI", "main")).toEqual([]);
+    } finally { await app.close(); }
+  });
+
+  it("delayed margin refreshes after a rescue cannot reopen a user-closed position", async () => {
+    const { app, post, id } = await openDemoPosition();
+    try {
+      const first = await post<Shock>(`/api/demo/${id}/shock`, { shockPct: "-15" });
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+      await post(`/api/treasury/requests/${first.transferRequest!.requestId}/decision`, { approved: false });
+      expect((await post<{ position: { state: string } }>(`/api/positions/${id}/close`)).position.state).toBe("CLOSED");
+      await vi.advanceTimersByTimeAsync(25_000);
+      expect((await app.inject({ method: "GET", url: `/api/positions/${id}` })).json().state).toBe("CLOSED");
+    } finally { vi.useRealTimers(); await app.close(); }
   });
 
   it("tries the vault (reverts ExceedsPerTxCap), files a request, and after a decline reduces the perp reduce-only", async () => {

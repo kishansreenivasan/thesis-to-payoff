@@ -8,6 +8,7 @@ import Fastify from "fastify";
 import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
 import { createMcpServer } from "@ttp/mcp";
 import { createOrderStore } from "./order-store";
+import { closePositionLegs } from "./close-position";
 import {
   OrderRequest,
   PositionSnapshot,
@@ -15,10 +16,10 @@ import {
   RiskInput,
   StrategyPlan,
   ThesisIntent,
+  TransferRequest,
   type Order,
   type RiskApi,
   type StrategyApi,
-  type TransferRequest,
   type TreasuryApi,
   type VenuesApi,
 } from "@ttp/shared";
@@ -66,6 +67,8 @@ export function buildApp(deps: Dependencies = {}) {
   const positions = new Map<string, ReturnType<typeof PositionSnapshot.parse>>();
   const rescueRequests = new Map<string, Awaited<ReturnType<TreasuryApi["getReleaseStatus"]>>>();
   const riskStates = new Map<string, "NORMAL" | "WARN" | "FUNDING_ELIGIBLE" | "APPROVAL_PENDING" | "DELEVERAGE_REQUIRED" | "RECOVERED" | "CLOSING" | "FAILED_SAFE">();
+  // shortcut: one API process serializes shared-account writes; add a database lease before using multiple workers.
+  const positionActions = new Set<string>();
 
   const recordEvent = (event: Omit<import("@ttp/shared").ActivityEvent, "seq">) => {
     const saved = store.appendEvent(event);
@@ -162,6 +165,7 @@ export function buildApp(deps: Dependencies = {}) {
         quotes = (fixture.quotes ?? []).map((quote) => Quote.parse(quote));
       }
       const plan = deps.strategy.buildPlan(intent.data, quotes);
+      if (store.getPlan(plan.strategyId)?.position) return reply.code(409).send({ error: "This strategy already has an execution record. Manage its existing position before starting a new run." });
       const payoff = deps.strategy.payoffGrid(plan, quotes);
       quoted.set(plan.strategyId, { plan, quotes });
       store.savePlan(plan, quotes);
@@ -305,7 +309,64 @@ export function buildApp(deps: Dependencies = {}) {
     return position;
   });
 
+  app.post<{ Params: { id: string } }>("/api/positions/:id/close", async (request, reply) => {
+    const realVenues = process.env.VENUES_MODE === "real";
+    if (realVenues && !hasBearer(request.headers.authorization)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
+    if (!realVenues && !(demoMode() && (process.env.VENUES_MODE ?? "mock") === "mock")) return reply.code(503).send({ error: "Closing requires configured real venues or mock demo mode" });
+    if (!deps.venues) return reply.code(503).send({ error: "Venue service is not available" });
+    const strategyId = request.params.id.replace(/^pos_/, "");
+    const saved = store.getPlan(strategyId);
+    const snapshot = positions.get(strategyId) ?? saved?.position;
+    if (!saved || !snapshot) return reply.code(404).send({ error: "Position not found" });
+    if (snapshot.orders.some((order) => !store.getOrder(order.clientOrderId))) return reply.code(409).send({ error: "The execution journal is incomplete. Reconcile the venue orders before closing." });
+    if (positionActions.size) return reply.code(409).send({ error: "A position action is already in progress. Wait for it to finish." });
+    if (snapshot.state === "CLOSED") return { position: snapshot, results: [], requestError: null };
+    positionActions.add(strategyId);
+    let updated = PositionSnapshot.parse({ ...snapshot, state: "REDUCING", riskState: "CLOSING", updatedAt: new Date().toISOString() });
+    positions.set(strategyId, updated);
+    store.savePosition(strategyId, updated);
+    recordEvent({ timestamp: updated.updatedAt, positionId: snapshot.positionId, type: "POSITION_CLOSE_REQUESTED", reasonCode: "UserRequestedClose", details: { explanation: "The user requested an exit; automatic funding and rescue actions are suspended for this strategy." }, source: "SIMULATED" });
+    try {
+      let requestError: string | null = null;
+      const results = await closePositionLegs(saved.plan, deps.venues, store);
+      const savedRequest = store.getEvents(snapshot.positionId).reverse().find((event) => event.type === "TRANSFER_REQUEST_UPDATED");
+      const restoredRequest = TransferRequest.safeParse(savedRequest?.details);
+      const fundingRequest = rescueRequests.get(strategyId) ?? (restoredRequest.success ? restoredRequest.data : null);
+      if (fundingRequest && ["REQUESTED", "OWNER_APPROVAL_NEEDED", "OWNER_APPROVED"].includes(fundingRequest.state)) {
+        try {
+          if (!deps.treasury) throw new Error("Treasury service is unavailable");
+          const current = await deps.treasury.getReleaseStatus(fundingRequest.requestId);
+          const canceled = ["REQUESTED", "OWNER_APPROVAL_NEEDED", "OWNER_APPROVED"].includes(current.state)
+            ? await deps.treasury.cancelRequest(fundingRequest.requestId) : current;
+          rescueRequests.set(strategyId, canceled);
+          if (!["REJECTED", "EXPIRED", "ARC_FINALIZED"].includes(canceled.state)) throw new Error("Funding request is still active");
+          recordEvent({ timestamp: new Date().toISOString(), positionId: snapshot.positionId, type: "TRANSFER_REQUEST_UPDATED", reasonCode: canceled.state, details: canceled, source: canceled.source });
+        } catch (error) { requestError = error instanceof Error ? error.message : "Unable to cancel the funding request"; }
+      }
+      const closed = !requestError && results.every((result) => result.state === "CLOSED");
+      const orders = store.listOrders(strategyId).flatMap((row) => row.order ? [row.order] : []);
+      updated = PositionSnapshot.parse({ ...updated, state: closed ? "CLOSED" : "REDUCING", orders, positions: closed ? [] : snapshot.positions, updatedAt: new Date().toISOString() });
+      positions.set(strategyId, updated);
+      store.savePosition(strategyId, updated);
+      for (const result of results) {
+        if (result.order) recordEvent({ timestamp: result.order.updatedAt, positionId: snapshot.positionId, type: "ORDER_UPDATED", reasonCode: result.order.state, details: result.order, source: result.order.source });
+      }
+      recordEvent({ timestamp: updated.updatedAt, positionId: snapshot.positionId, type: "POSITION_CLOSE_UPDATED", reasonCode: updated.state, details: { results, requestError, explanation: closed ? "All executable strategy legs have confirmed exits. The modeled Fed hedge has no venue position to sell." : "The exit is incomplete. Unfilled or uncertain legs remain visible; retry after resolving the reported issue." }, source: "SIMULATED" });
+      return { position: updated, results, requestError };
+    } finally { positionActions.delete(strategyId); }
+  });
+
   async function monitorPosition(id: string, shockPct: string) {
+    const strategyId = id.replace(/^pos_/, "");
+    const position = positions.get(strategyId) ?? store.getPlan(strategyId)?.position;
+    if (position?.state === "CLOSED" || position?.state === "REDUCING") throw new Error("This position is closing or closed; monitoring cannot submit new rescue actions.");
+    if (positionActions.size) throw new Error("A position action is already in progress");
+    positionActions.add(strategyId);
+    try { return await runMonitorPosition(id, shockPct); }
+    finally { positionActions.delete(strategyId); }
+  }
+
+  async function runMonitorPosition(id: string, shockPct: string) {
     const strategyId = id.startsWith("pos_") ? id.slice(4) : id;
     const saved = store.getPlan(strategyId);
     const snapshot = positions.get(strategyId) ?? saved?.position ?? undefined;
@@ -385,10 +446,12 @@ export function buildApp(deps: Dependencies = {}) {
         void (async () => {
           if (!deps.venues) return;
           const snapshot = positions.get(strategyId) ?? store.getPlan(strategyId)?.position;
-          if (!snapshot) return;
+          if (!snapshot || snapshot.state === "CLOSED" || snapshot.state === "REDUCING") return;
           const [margin, perpPositions] = await Promise.all([deps.venues.getMargin("perp"), deps.venues.getPositions("DERIVE", "perp")]);
-          const others = snapshot.positions.filter((item) => !item.instrumentId.includes("PERP"));
-          const updated = PositionSnapshot.parse({ ...snapshot, positions: [...others, ...perpPositions], margins: [margin], updatedAt: new Date().toISOString() });
+          const current = positions.get(strategyId) ?? store.getPlan(strategyId)?.position;
+          if (!current || current.state === "CLOSED" || current.state === "REDUCING") return;
+          const others = current.positions.filter((item) => !item.instrumentId.includes("PERP"));
+          const updated = PositionSnapshot.parse({ ...current, positions: [...others, ...perpPositions], margins: [margin], updatedAt: new Date().toISOString() });
           positions.set(strategyId, updated);
           store.savePosition(strategyId, updated);
           recordEvent({ timestamp: updated.updatedAt, positionId: updated.positionId, type: "MARGIN_UPDATED", reasonCode: null, details: { marginRatio: margin.marginRatio, perpSizeBtc: margin.perpSizeBtc, equityUsd: margin.equityUsd, explanation: `Perp now ${margin.perpSizeBtc} BTC; real margin ratio ${Number(margin.marginRatio).toFixed(2)}.` }, source: margin.source });
@@ -445,6 +508,7 @@ export function buildApp(deps: Dependencies = {}) {
   app.post("/api/demo/reset", async (request, reply) => {
     if (!demoMode()) return reply.code(403).send({ error: "Reset is available only in demo mode" });
     if (liveMode() && !hasBearer(request.headers.authorization)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
+    if (positionActions.size) return reply.code(409).send({ error: "Wait for the position action to finish before resetting." });
     quoted.clear(); approvals.clear(); positions.clear(); rescueRequests.clear(); riskStates.clear(); demoShocks.clear();
     const runId = store.reset();
     return { ok: true, runId };
@@ -457,6 +521,9 @@ export function buildApp(deps: Dependencies = {}) {
     if (!demoMode()) return reply.code(403).send({ error: "Flatten is available only in demo mode" });
     if (liveMode() && !hasBearer(request.headers.authorization)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
     if (!deps.venues) return reply.code(503).send({ error: "Venue service is not available" });
+    if (positionActions.size) return reply.code(409).send({ error: "A position action is already in progress" });
+    positionActions.add("demo_flatten");
+    try {
     const results: Array<{ instrumentId: string; account: string; quantity: string; state: string; venueOrderId: string | null; error?: string }> = [];
     let i = 0;
     for (const account of ["main", "perp"] as const) {
@@ -481,6 +548,7 @@ export function buildApp(deps: Dependencies = {}) {
       }
     }
     return { results };
+    } finally { positionActions.delete("demo_flatten"); }
   });
 
   // After a decision on a rescue request, run one monitor tick at the shock the demo is holding,
