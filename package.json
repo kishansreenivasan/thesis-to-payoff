@@ -17,7 +17,7 @@
     "dev:web": "pnpm --filter @ttp/web dev",
     "demo:open": "tsx --env-file-if-exists=.env scripts/demo-open.ts",
     "demo:reset": "tsx --env-file-if-exists=.env scripts/demo-reset.ts",
-    "start": "pnpm --filter @ttp/api start:hosted"
+    "start": "tsx --env-file-if-exists=.env apps/api/src/hosted.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

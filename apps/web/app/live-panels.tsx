@@ -3,7 +3,7 @@
 // plus the DEMO_MODE controls. Source metadata stays attached to API records.
 import { useCallback, useEffect, useState } from "react";
 import { arcAddressUrl, arcTxUrl } from "@ttp/treasury/owner";
-import { api, apiBase, getOperatorToken, setOperatorToken } from "../lib/client";
+import { api, apiBase } from "../lib/client";
 import { card, input } from "./theme";
 
 type Order = { clientOrderId: string; legId: string; venue: string; instrumentId: string; side: string; quantity: string; filledQuantity: string; avgPrice: string | null; state: string; venueOrderId: string | null; reduceOnly: boolean; source: string };
@@ -18,7 +18,7 @@ type CloseResult = { position: Position; results: Array<{ legId: string; instrum
 
 const usdc = (v6: string) => (Number(v6) / 1_000_000).toFixed(2);
 
-export function LivePanels() {
+export function LivePanels({ refreshKey }: { refreshKey?: string } = {}) {
   const [health, setHealth] = useState<Health | null>(null);
   const [position, setPosition] = useState<Position | null>(null);
   const [portfolio, setPortfolio] = useState<Position[]>([]);
@@ -28,7 +28,6 @@ export function LivePanels() {
   const [shock, setShock] = useState<ShockResult | null>(null);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
-  const [token, setToken] = useState("");
   const [confirmClose, setConfirmClose] = useState("");
   const [closeResult, setCloseResult] = useState<CloseResult | null>(null);
 
@@ -42,7 +41,7 @@ export function LivePanels() {
     } catch (e) { setError(e instanceof Error ? e.message : "Could not reach the API."); }
   }, [selectedStrategy]);
 
-  useEffect(() => { setToken(getOperatorToken()); void refresh(); const t = setInterval(() => void refresh(), 5000); return () => clearInterval(t); }, [refresh]);
+  useEffect(() => { void refresh(); const t = setInterval(() => void refresh(), 5000); return () => clearInterval(t); }, [refresh, refreshKey]);
 
   const positionId = position?.positionId;
   useEffect(() => { setConfirmClose(""); setCloseResult(null); setShock(null); }, [positionId]);
@@ -81,7 +80,6 @@ export function LivePanels() {
   const latestShock: ShockResult | null = lastDecision && typeof lastDecision.details.projectedRatio === "string"
     ? { projectedRatio: lastDecision.details.projectedRatio, projectedSource: String(lastDecision.details.projectedSource ?? "SIMULATED"), decision: { action: String(lastDecision.details.action ?? ""), explanation: String(lastDecision.details.explanation ?? ""), nextState: String(lastDecision.details.nextState ?? "") } }
     : shock;
-  const live = health?.modes.venues === "real";
   const savedExit = [...events].reverse().find((event) => event.type === "POSITION_CLOSE_UPDATED");
   const exit = closeResult ?? (savedExit?.details as Omit<CloseResult, "position"> | undefined);
 
@@ -97,13 +95,10 @@ export function LivePanels() {
       <p style={{ color: "#a4b5bd", fontSize: 13 }}>The shock is a hypothetical price move used for a modeled stress projection. It changes the projection, not the reported venue balance.</p>
     </section>}
 
-    <section style={{ ...card, marginTop: 18 }}>
+    <section id="positions" style={{ ...card, marginTop: 18, scrollMarginTop: 24 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}><h2 style={{ marginBottom: 0 }}>Venues and margin</h2><button disabled={!!busy || !position || position.state === "CLOSED"} onClick={() => { if (position) { setSelectedStrategy(position.strategyId); setConfirmClose(position.strategyId); } }} style={{ background: "transparent", borderColor: "#ffb489", color: "#ffb489" }}>{busy === "Closing positions" ? "Closing…" : position?.state === "REDUCING" ? "Retry remaining exits" : "Close positions"}</button></div>
       {portfolio.length > 1 && <label style={{ display: "block", marginTop: 16 }}>Position <select aria-label="Choose position" style={{ ...input, marginLeft: 12 }} value={position?.strategyId ?? ""} onChange={(event) => { setSelectedStrategy(event.target.value); setPosition(portfolio.find((item) => item.strategyId === event.target.value) ?? null); }}>{portfolio.map((item) => <option key={item.strategyId} value={item.strategyId}>{item.strategyId} · {item.state}</option>)}</select></label>}
-      {live && <details><summary>Trading access {token ? "(saved in this browser)" : "(required for position actions)"}</summary>
-        <input aria-label="Trading access token" type="password" placeholder="Access token" value={token} onChange={(e) => setToken(e.target.value)} style={{ ...input, width: 320, maxWidth: "100%" }} />
-        <button onClick={() => setOperatorToken(token)} style={{ marginLeft: 8 }}>Save</button>
-      </details>}
+      {health?.modes.venues === "real" && <p style={{ fontSize: 12 }}><a href="#trading-actions">Manage trading access ↑</a></p>}
       {confirmClose && <div style={{ ...card, marginTop: 16, borderColor: "#ffb489" }}><h3>Close this strategy’s positions?</h3><p>Cancel outstanding strategy orders and sell its remaining held legs, starting with the perpetual. Fills depend on available liquidity; any unfilled legs will stay visible for retry. This does not withdraw funds from your venue accounts.</p><div style={{ display: "flex", gap: 12 }}><button disabled={!!busy} onClick={() => void doClose()}>Confirm close</button><button disabled={!!busy} onClick={() => setConfirmClose("")} style={{ background: "transparent", color: "#a4b5bd", borderColor: "#33464f" }}>Keep positions</button></div></div>}
       {exit && <div role="status" className="empty-state" style={{ marginTop: 16 }}><b>{position?.state === "CLOSED" ? "Positions closed" : "Exit needs attention"}</b><ul>{(exit.results ?? []).map((result) => <li key={result.legId}>{result.legId} · {result.instrumentId} · {result.state}{result.remainingQuantity !== null ? ` · remaining ${result.remainingQuantity}` : ""}{result.error ? ` — ${result.error}` : ""}</li>)}</ul>{exit.requestError && <p>Funding request cancellation needs attention: {exit.requestError}</p>}</div>}
       {error && <p role="alert" style={{ color: "#ffb489" }}>{error}</p>}

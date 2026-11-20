@@ -27,6 +27,7 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
   });
   const text = await response.text();
   const body = text ? JSON.parse(text) as T & { error?: string } : ({} as T & { error?: string });
+  if (response.status === 401) throw new Error("Trading access is missing or expired. Save a valid access token under Trading access, then try again.");
   if (!response.ok) throw new Error(body.error ?? `Request failed (${response.status})`);
   return body;
 }
