@@ -1,5 +1,12 @@
 # CHANGES
 
+## 2026-11-20 — Sid: capture walkthrough and fresh three-leg execution
+
+- Recorded all six history stages for 10 seconds each, then used the homepage's Fed-hike thesis to build, approve and execute a new position. Saved a 3:29 silent 1080p video outside the repository.
+- The first execution attempt correctly rejected a moved option price before any orders. Refreshed and approved the updated plan; Gemini NO, Derive call and Derive perp all FILLED. Saved real source-labeled receipts in `evidence/video-2026-11-20-open.json`; the Fed hedge remains modeled. No keys or tokens appear in the footage or evidence.
+- Position `pos_strat_63491dbeab91` remains OPEN / NORMAL. No close, fresh shock or Arc release was performed. Another entry needs fresh Gemini liquidity; an exit still needs opposite-side liquidity. Updated video/runbook/status notes.
+- Validation: asserted all three orders are fully FILLED with venue IDs and TESTNET/SANDBOX sources; validated all six history holds are 10 seconds, capture timestamps strictly increase, and the exported MP4 is 209 seconds; visually checked decoded first/last frames. No product code changed; prior test/build results stand.
+
 ## 2026-11-20 — Sid: separate homepage and chatbot examples
 
 - Homepage defaults to the simpler bullish-BTC/downside-protection thesis with a $500 risk budget (three legs).

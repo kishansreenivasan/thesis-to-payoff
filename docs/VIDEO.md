@@ -1,4 +1,18 @@
-# Convex video: easiest recording path
+# Convex video
+
+## Recorded walkthrough — November 20
+
+A silent 1920×1080 MP4 was captured from the actual local dashboard at a readable pace. Duration: **3:29**. The six history stages each hold for 10 seconds, followed by a new homepage strategy, approval, execution and venue receipts. The local file is `output/convex-video/convex-walkthrough-2026-11-20.mp4` in the chat workspace, outside this repository. It has not been uploaded.
+
+The fresh strategy used “Bullish BTC into December, worried the Fed hikes more than expected on Dec 11. Max risk $500.” The first execution attempt stopped before sending orders because the option price exceeded its approved limit. After refreshing and approving the new plan, all three executable legs filled at 10:17 UTC:
+
+| Leg | Confirmed fill | Venue order ID |
+|---|---|---|
+| Gemini BTC NO | 1 at $0.99 | `145853902324831196` |
+| Derive Dec 11 $60,000 call | 0.05 BTC at $3,827 | `e4a99ad3-381d-452f-a84a-b9bf51fdee75` |
+| Derive BTC perp | 0.0172 BTC at $61,676 | `9d7f6e51-be96-495b-90ca-0136a105ee7b` |
+
+Evidence: [fresh position response](../evidence/video-2026-11-20-open.json). Position `pos_strat_63491dbeab91` is OPEN, risk NORMAL; reported perp margin ratio was 4.3219. These are actual Derive testnet and Gemini sandbox fills. The Fed hedge remains modeled and has no order. The dated November 19 history is a separate run. No fresh shock, treasury release or position close was requested in this capture; the new positions remain open. Gemini exit liquidity remains a constraint.
 
 ## Examples for the recording
 
@@ -10,7 +24,7 @@
 
 ## Verified button sequence (Nov 20)
 
-The complete interactive build → approve → execute → close flow passed browser checks against isolated fixtures. On the actual configured services, automatic access, live plan generation and **Approve plan** passed without a manual token. A fresh **Execute plan** was deliberately not clicked: the selected `GEMI-BTC2611302200-HI85000` book has one YES bid at 0.01 (one NO entry at 0.99) but no YES asks for a NO exit. The separate Arc precheck also still reports 22 USDC total / 12 above reserve, insufficient for the full approved-release rehearsal. The decline path does not itself require that release funding.
+The complete interactive build → approve → execute → close flow passed browser checks against isolated fixtures. On the configured services, automatic access and the full build → approve → execute flow passed without a manual token during the capture above. The one available HI85000 NO entry filled; another opening needs fresh sandbox liquidity, and no NO exit liquidity was available at the last book check. The separate Arc precheck reports 22 USDC total / 12 above reserve, insufficient for the full approved-release rehearsal. The decline path does not itself require that release funding.
 
 **The stable recording path checked on screen is http://localhost:3100/history.** It shows the real November 19 execution evidence. Use the same buttons below; these screens do not place new trades.
 
@@ -26,7 +40,7 @@ The complete interactive build → approve → execute → close flow passed bro
 
 All six screens were clicked through and visually inspected; there are no demo banners or manual access prompts. Screenshots are saved locally in `output/convex-video/validated-history-1.png` through `validated-history-6.png` under the chat workspace.
 
-**For a fresh interactive recording once liquidity permits:** open the dashboard → **Build strategy** → review legs/payoff → **Next: review and execute this plan** → **Approve plan** → **Execute plan** → **View positions and manage exits**. For exit footage choose the saved position → **Close positions** → **Confirm close**. A partial exit must remain visible, not be narrated as fully closed. Do not cut current quote footage into the dated history as though it were the same fresh execution.
+**Verified fresh execution sequence:** open the dashboard → **Build strategy** → review legs/payoff → **Next: review and execute this plan** → **Approve plan** → **Execute plan** → **View positions and manage exits**. Another opening requires available sandbox liquidity. For exit footage, once exit liquidity permits, choose the saved position → **Close positions** → **Confirm close**. A partial exit must remain visible, not be narrated as fully closed. Do not cut current quote footage into the dated history as though it were the same fresh execution.
 
 
 
@@ -56,4 +70,4 @@ You can also use the actual Grok acceptance chat, which invoked `compile_thesis`
 3. Stop after the closing line. Trim the beginning/end; keep the execution date and modeling explanation visible.
 4. Upload the video and check that it plays while signed out. Add its URL to the Devpost form and `docs/DEVPOST.md`.
 
-The video is still to be recorded and uploaded. This page prepares a dependable capture path; it does not create a video file. A fresh live opening remains conditional on Gemini liquidity and vault funding.
+The silent walkthrough is recorded locally. Voiceover and upload remain; a new opening requires fresh Gemini entry liquidity, and the full approved-release path still needs vault funding. Opening the strategy itself does not require an Arc release.

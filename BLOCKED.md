@@ -1,5 +1,11 @@
 # BLOCKED
 
+## [Lane C] Fresh entry captured; repeat entry and exit depend on liquidity
+- When: 2026-11-20 10:17 UTC
+- The user-requested entry video succeeded: Gemini HI85000 NO (1 contract), Derive call and Derive perp all filled. See `evidence/video-2026-11-20-open.json` and `docs/VIDEO.md`.
+- The available one-contract NO entry was consumed. Recheck the book before another opening; NO exit liquidity was absent at the last check. The saved new position remains OPEN. No close was requested for this capture.
+- The earlier complete-entry/exit recording constraint below still applies to fresh closing footage, not to the completed entry capture. Full Arc approved-release funding remains a separate constraint.
+
 ## [Lane B/C] Fresh complete recording needs Gemini exit liquidity (OPEN)
 - When: 2026-11-20, read-only preflight in `evidence/readiness-2026-11-20.json`
 - Task: user-requested browser walkthrough for recording the complete build/approve/execute/close flow.

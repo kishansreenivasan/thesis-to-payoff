@@ -1,6 +1,6 @@
 # Demo runbook (DESIGN.md Section 16)
 
-**For the video now:** use the six-screen `/history` walkthrough and the [2:30 narration/capture guide](VIDEO.md). It reads the saved real testnet/sandbox evidence, with modeling explanations and the run date visible. It needs no fresh positions, wallet, token, funding or liquidity. The live-run instructions below are for a future fresh execution.
+**Video captured November 20:** the [recording guide and receipts](VIDEO.md) describe the 3:29 silent video: six history stages at 10 seconds each, then a fresh homepage strategy with three confirmed venue fills. The new position remains OPEN. The history uses November 19 evidence; it is a separate run. The live-run instructions below are for another execution and require checking liquidity first.
 
 Testnet and sandbox only. Read amounts off the screen; do not quote fixed numbers (the top-up is
 computed live, about $35 to $80).
@@ -12,7 +12,7 @@ Run the scripts with `DEMO_BASE_URL=https://<domain>` (or `PUBLIC_BASE_URL` in `
 1. `curl -s $PUBLIC_BASE_URL/api/health` shows the expected modes and `"demoMode":true`.
 2. `pnpm demo:reset --flatten` (closes the Derive call and perp with reduce-only IOC orders, clears demo state, starts a new client-order-id run). Wait about 30 s; Derive reads lag.
 3. `cd packages/risk && VENUES_MODE=real npx tsx --env-file=../../.env scripts/calibrate.ts`: the projected ratio after -15% must be in [1.2, 1.5). If not, a human moves the printed amount of test USDC in the Derive perp subaccount.
-4. Open the dashboard, expand "Operator token", paste the MCP bearer token, Save.
+4. Locally, start with `LOCAL_OPERATOR_ACCESS=true` and a localhost public URL; the dashboard uses the server configuration automatically. Hosted access still requires its configured authentication.
 5. Grok: the connector is listed and `position_status` answers.
 
 ## T-10 min: open positions

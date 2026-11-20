@@ -1,0 +1,101 @@
+{
+  "positionId": "pos_strat_63491dbeab91",
+  "strategyId": "strat_63491dbeab91",
+  "state": "OPEN",
+  "riskState": "NORMAL",
+  "orders": [
+    {
+      "clientOrderId": "strat_63491dbeab91-1-r1-L3b",
+      "strategyId": "strat_63491dbeab91",
+      "legId": "L3b",
+      "venue": "GEMINI",
+      "account": "sandbox",
+      "instrumentId": "GEMI-BTC2611302200-HI85000:NO",
+      "side": "BUY",
+      "quantity": "1",
+      "limitPrice": "0.99",
+      "reduceOnly": false,
+      "venueOrderId": "145853902324831196",
+      "filledQuantity": "1",
+      "avgPrice": "0.99",
+      "state": "FILLED",
+      "source": "SANDBOX",
+      "updatedAt": "2026-11-20T10:17:45.581Z"
+    },
+    {
+      "clientOrderId": "strat_63491dbeab91-1-r1-L1",
+      "strategyId": "strat_63491dbeab91",
+      "legId": "L1",
+      "venue": "DERIVE",
+      "account": "main",
+      "instrumentId": "BTC-20261211-60000-C",
+      "side": "BUY",
+      "quantity": "0.05",
+      "limitPrice": "3849.00",
+      "reduceOnly": false,
+      "venueOrderId": "e4a99ad3-381d-452f-a84a-b9bf51fdee75",
+      "filledQuantity": "0.05",
+      "avgPrice": "3827.00",
+      "state": "FILLED",
+      "source": "TESTNET",
+      "updatedAt": "2026-11-20T10:17:48.221Z"
+    },
+    {
+      "clientOrderId": "strat_63491dbeab91-1-r1-L2",
+      "strategyId": "strat_63491dbeab91",
+      "legId": "L2",
+      "venue": "DERIVE",
+      "account": "perp",
+      "instrumentId": "BTC-PERP",
+      "side": "BUY",
+      "quantity": "0.0172",
+      "limitPrice": "61982.0",
+      "reduceOnly": false,
+      "venueOrderId": "9d7f6e51-be96-495b-90ca-0136a105ee7b",
+      "filledQuantity": "0.0172",
+      "avgPrice": "61676.00",
+      "state": "FILLED",
+      "source": "TESTNET",
+      "updatedAt": "2026-11-20T10:17:49.880Z"
+    }
+  ],
+  "positions": [
+    {
+      "venue": "DERIVE",
+      "account": "main",
+      "instrumentId": "BTC-20261211-60000-C",
+      "quantity": "0.05",
+      "avgPrice": "3855.50",
+      "markPrice": "3809.38",
+      "unrealizedPnlUsd": "-2.31",
+      "source": "TESTNET",
+      "timestamp": "2026-11-20T10:17:50.417Z"
+    },
+    {
+      "venue": "DERIVE",
+      "account": "perp",
+      "instrumentId": "BTC-PERP",
+      "quantity": "0.0172",
+      "avgPrice": "61695.09",
+      "markPrice": "61663.41",
+      "unrealizedPnlUsd": "-0.54",
+      "source": "TESTNET",
+      "timestamp": "2026-11-20T10:17:50.451Z"
+    }
+  ],
+  "margins": [
+    {
+      "account": "perp",
+      "equityUsd": "229.25",
+      "maintenanceMarginUsd": "53.04",
+      "initialMarginUsd": "70.02",
+      "marginRatio": "4.3219",
+      "perpSizeBtc": "0.0172",
+      "indexPriceUsd": "61677.70",
+      "source": "TESTNET",
+      "timestamp": "2026-11-20T10:17:50.440Z"
+    }
+  ],
+  "estimatedPnlUsd": "0",
+  "updatedAt": "2026-11-20T10:17:50.451Z"
+}
