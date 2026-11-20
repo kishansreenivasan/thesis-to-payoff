@@ -16,6 +16,16 @@ Append new entries at the top. Format: DESIGN.md Section 14. Humans fill in "Dec
 
 ---
 
+## [Lane C/B] Gemini sandbox BTC2611302200 has no YES bids, so no L3b plan (OPEN)
+- When: 2026-11-20 00:15 UTC
+- Task: `pnpm demo:open` against the hosted server (real mode)
+- Expected: the planner buys NO on the highest "or above" strike with a YES bid, sized to the book (BLOCKED decision 2026-11-18)
+- Actual: `/api/strategies/quote` -> 422 `NO_L3B_STRIKE: no BTC2611302200 "or above" strike with a YES bid`. The books are empty: HI67500 has no bids or asks, and HI70000 has only an ask of 0.04 x 4. Our rehearsals bought NO 42 + 3 + 3, which used up the YES bids that existed (42 on 2026-11-19, 1 on 2026-11-18), so a sandbox maker does post liquidity at times.
+- Evidence: `evidence/rehearsal-2026-11-19-*.json`; GET https://api.sandbox.gemini.com/v1/book/GEMI-BTC2611302200-HI67500
+- Options I see: 1) wait for sandbox liquidity to come back and run `demo:open` once, about 10 minutes before the demo, with no more rehearsals that buy NO; 2) ask Gemini at office hours to refresh sandbox liquidity on BTC2611302200 (Human item 10); 3) allow a resting GTC NO order when the book is empty (a design change: the leg might not fill)
+- Meanwhile: Derive positions flattened; the hosted server is in real mode and healthy; the full real rehearsal is already recorded in evidence/
+- Decision (filled by humans): pending
+
 ## [Lane C] Hosted MCP deployment not available (OPEN)
 - When: 2026-11-19
 - Task: C9, host the API, web app and MCP connector

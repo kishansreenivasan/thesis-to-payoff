@@ -102,8 +102,11 @@ describe("stateless Streamable HTTP MCP endpoint", () => {
       await invoke("approve_strategy", { strategyId: quoted.plan.strategyId, versionHash: quoted.plan.versionHash }, 5);
       const opened = await invoke<{ positionId: string; state: string }>("execute_strategy", { strategyId: quoted.plan.strategyId }, 6);
       expect(opened.state).toBe("OPEN");
-      const current = await invoke<{ positionId: string; state: string }>("position_status", { id: quoted.plan.strategyId }, 7);
-      expect(current.positionId).toBe(opened.positionId);
+      const current = await invoke<{ position: { positionId: string } }>("position_status", { id: quoted.plan.strategyId }, 7);
+      expect(current.position.positionId).toBe(opened.positionId);
+      const latest = await invoke<{ position: { positionId: string }; approvalRequests: unknown[] }>("position_status", {}, 8);
+      expect(latest.position.positionId).toBe(opened.positionId);
+      expect(Array.isArray(latest.approvalRequests)).toBe(true);
     } finally {
       await app.close();
       resetMock();

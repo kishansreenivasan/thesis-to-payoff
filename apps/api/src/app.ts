@@ -31,6 +31,31 @@ interface Dependencies {
   decideMockRequest?: (requestId: string, approved: boolean) => TransferRequest;
 }
 
+// Derive BTC-PERP order size rules (public/get_instrument, checked live 2026-11-19): amount step
+// 0.0001 BTC, minimum 0.01 BTC. The risk engine sizes the reduction to 6 dp, so round it up to the
+// step and to the minimum (reducing a little more only frees more margin), never past the position.
+const DERIVE_PERP_STEP_UNITS = 10_000; // 1 / 0.0001
+const DERIVE_PERP_MIN_UNITS = 100; // 0.01 BTC
+export function deriveReduceQty(reduceQtyBtc: string, positionQtyBtc: string): string {
+  const position = Math.floor(Math.abs(Number(positionQtyBtc)) * DERIVE_PERP_STEP_UNITS + 1e-6);
+  const wanted = Math.ceil(Number(reduceQtyBtc) * DERIVE_PERP_STEP_UNITS - 1e-6);
+  const units = Math.min(position, Math.max(wanted, DERIVE_PERP_MIN_UNITS));
+  return (units / DERIVE_PERP_STEP_UNITS).toFixed(4);
+}
+
+export const PERP_ENTRY_SLIPPAGE = 0.005;
+export function perpEntryLimit(side: "BUY" | "SELL", price: string): string {
+  const p = Number(price);
+  const v = side === "BUY" ? Math.ceil(p * (1 + PERP_ENTRY_SLIPPAGE) * 10) / 10 : Math.floor(p * (1 - PERP_ENTRY_SLIPPAGE) * 10) / 10;
+  return v.toFixed(1);
+}
+
+// Reduce-only orders are IOC on Derive, and a limit exactly at a thin testnet bid can find no
+// liquidity (11009, seen 2026-11-19). Sell up to 1% through the bid, on the 0.1 tick.
+export function marketableSellLimit(bid: string): string {
+  return (Math.floor(Number(bid) * 0.99 * 10) / 10).toFixed(1);
+}
+
 export function buildApp(deps: Dependencies = {}) {
   const app = Fastify({ logger: true });
   const store = createOrderStore();
@@ -48,7 +73,11 @@ export function buildApp(deps: Dependencies = {}) {
     return saved;
   };
 
-  const liveMode = () => process.env.DEMO_MODE !== "true" && process.env.VENUES_MODE === "real" && process.env.STRATEGY_MODE === "real";
+  // Live = real venue and strategy modes. DEMO_MODE only adds the shock/reset controls; with live
+  // venues those controls place real testnet orders, so they need the operator bearer token.
+  const liveMode = () => process.env.VENUES_MODE === "real" && process.env.STRATEGY_MODE === "real";
+  const demoMode = () => process.env.DEMO_MODE === "true";
+  const demoShocks = new Map<string, string>();
   const hasBearer = (authorization?: string) => {
     const token = process.env.MCP_BEARER_TOKEN;
     if (!token || !authorization?.startsWith("Bearer ")) return false;
@@ -168,11 +197,11 @@ export function buildApp(deps: Dependencies = {}) {
     const existing = positions.get(request.params.id) ?? saved?.position ?? undefined;
     if (existing) return existing;
     if (!deps.venues) return reply.code(503).send({ error: "Venue service is not available" });
-    const mockExecution = process.env.DEMO_MODE === "true" && (process.env.VENUES_MODE ?? "mock") === "mock";
+    const mockExecution = demoMode() && (process.env.VENUES_MODE ?? "mock") === "mock";
     const liveExecution = liveMode();
     if (liveExecution && !hasBearer(request.headers.authorization)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
     if (!mockExecution && !liveExecution) {
-      return reply.code(503).send({ error: "Execution requires mock demo mode or both real venue and strategy modes with DEMO_MODE disabled" });
+      return reply.code(503).send({ error: "Execution requires mock demo mode or both real venue and strategy modes" });
     }
 
     if (liveExecution) {
@@ -198,15 +227,20 @@ export function buildApp(deps: Dependencies = {}) {
         .sort((a, b) => executionOrder.indexOf(a.legId) - executionOrder.indexOf(b.legId));
       for (const leg of realLegs) {
         const order = OrderRequest.parse({
-          clientOrderId: `${draft.plan.strategyId}-${draft.plan.revision}-${leg.legId}`,
+          clientOrderId: `${draft.plan.strategyId}-${draft.plan.revision}-r${store.runId()}-${leg.legId}`,
           strategyId: draft.plan.strategyId,
           legId: leg.legId,
           venue: leg.venue,
           account: leg.account,
-          instrumentId: leg.instrumentId,
+          // Gemini orders carry the outcome as a ":YES"/":NO" suffix (packages/venues/src/conventions.ts).
+          instrumentId: leg.venue === "GEMINI" && !/:(YES|NO)$/.test(leg.instrumentId)
+            ? `${leg.instrumentId}:${leg.type === "EVENT_NO" ? "NO" : "YES"}`
+            : leg.instrumentId,
           side: leg.side,
           quantity: leg.quantity,
-          limitPrice: leg.limitPrice,
+          // Thin testnet perp book: the quoted ask often moves before the order lands (2026-11-19
+          // rehearsal: no fill, REJECTED). Allow the perp entry up to 0.5% through the quote.
+          limitPrice: liveMode() && leg.venue === "DERIVE" && leg.instrumentId.includes("PERP") ? perpEntryLimit(leg.side, leg.limitPrice) : leg.limitPrice,
           reduceOnly: false,
         });
         const prior = store.getOrder(order.clientOrderId);
@@ -259,6 +293,10 @@ export function buildApp(deps: Dependencies = {}) {
     return snapshot;
   });
 
+  app.get("/api/positions", async () => store.listPositions()
+    .map(({ position }) => position)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
+
   app.get<{ Params: { id: string } }>("/api/positions/:id", async (request, reply) => {
     const position = [...positions.values()].find((item) => item.positionId === request.params.id || item.strategyId === request.params.id)
       ?? store.getPlan(request.params.id)?.position
@@ -297,6 +335,9 @@ export function buildApp(deps: Dependencies = {}) {
     if ((decision.action === "RELEASE_WITHIN_LIMITS" || decision.action === "REQUEST_APPROVAL") && decision.topUpUsdc6) {
       transferRequest = await deps.treasury.releaseWithinLimits(draft.plan.strategyId, "DERIVE", decision.topUpUsdc6);
       if (transferRequest.state === "REJECTED") {
+        // A reverted call emits no vault event, so log it here with its tx hash (Section 16 step 6).
+        // (The mock treasury emits its own RELEASE_REVERTED event.)
+        if (transferRequest.source === "ONCHAIN_TESTNET") recordEvent({ timestamp: new Date().toISOString(), positionId: snapshot.positionId, type: "RELEASE_REVERTED", reasonCode: transferRequest.reasonCode, details: { ...transferRequest, explanation: `The vault rejected an agent release of ${(Number(transferRequest.amountUsdc6) / 1e6).toFixed(2)} USDC onchain; filing an owner approval request.` }, source: transferRequest.source });
         transferRequest = await deps.treasury.requestRelease(draft.plan.strategyId, "DERIVE", decision.topUpUsdc6, 120);
       }
       rescueRequests.set(strategyId, transferRequest);
@@ -307,8 +348,8 @@ export function buildApp(deps: Dependencies = {}) {
         const cooldown = Math.floor(Date.now() / 30_000);
         const orderReq = OrderRequest.parse({
           clientOrderId: `${draft.plan.strategyId}-rescue-${cooldown}`, strategyId: draft.plan.strategyId, legId: "L2",
-          venue: "DERIVE", account: "perp", instrumentId: perp.instrumentId, side: "SELL", quantity: decision.reduceQtyBtc,
-          limitPrice: quote.bid, reduceOnly: true,
+          venue: "DERIVE", account: "perp", instrumentId: perp.instrumentId, side: "SELL", quantity: deriveReduceQty(decision.reduceQtyBtc, perp.quantity),
+          limitPrice: marketableSellLimit(quote.bid), reduceOnly: true,
         });
         const previous = store.getOrder(orderReq.clientOrderId);
         if (previous?.order) reduceOrder = previous.order;
@@ -324,15 +365,39 @@ export function buildApp(deps: Dependencies = {}) {
         recordEvent({ timestamp: reduceOrder.updatedAt, positionId: snapshot.positionId, type: "ORDER_UPDATED", reasonCode: reduceOrder.state, details: reduceOrder, source: reduceOrder.source });
       }
     }
+    if (reduceOrder?.state === "FILLED") scheduleMarginRefresh(strategyId);
     riskStates.set(strategyId, decision.nextState);
-    const updated = PositionSnapshot.parse({ ...snapshot, riskState: decision.nextState, margins: [margin], updatedAt: new Date().toISOString() });
+    // After a reduce-only order, re-read the venue so the gauge shows the recovered margin (Section 16 step 8).
+    const latestMargin = reduceOrder ? await deps.venues.getMargin("perp").catch(() => margin) : margin;
+    const orders = reduceOrder ? [...snapshot.orders.filter((item) => item.clientOrderId !== reduceOrder!.clientOrderId), reduceOrder] : snapshot.orders;
+    const updated = PositionSnapshot.parse({ ...snapshot, riskState: decision.nextState, orders, margins: [latestMargin], updatedAt: new Date().toISOString() });
     positions.set(strategyId, updated);
     store.savePosition(strategyId, updated);
     recordEvent({ timestamp: updated.updatedAt, positionId: updated.positionId, type: "RISK_DECISION", reasonCode: decision.reasonCode, details: { ...decision, explanation: decision.explanation }, source: decision.projectedSource });
-    return { margin, projectedRatio: decision.projectedRatio, projectedSource: decision.projectedSource, decision, transferRequest, reduceOrder };
+    return { margin: latestMargin, projectedRatio: decision.projectedRatio, projectedSource: decision.projectedSource, decision, transferRequest, reduceOrder };
   }
 
-  if (liveMode() && deps.risk && deps.treasury && deps.venues) {
+  // Derive's reads lag its writes by up to ~25 s, so after a reduce-only fill re-read the perp a
+  // couple of times and update the snapshot. Read only: it never places orders.
+  function scheduleMarginRefresh(strategyId: string) {
+    for (const delay of [10_000, 25_000]) {
+      setTimeout(() => {
+        void (async () => {
+          if (!deps.venues) return;
+          const snapshot = positions.get(strategyId) ?? store.getPlan(strategyId)?.position;
+          if (!snapshot) return;
+          const [margin, perpPositions] = await Promise.all([deps.venues.getMargin("perp"), deps.venues.getPositions("DERIVE", "perp")]);
+          const others = snapshot.positions.filter((item) => !item.instrumentId.includes("PERP"));
+          const updated = PositionSnapshot.parse({ ...snapshot, positions: [...others, ...perpPositions], margins: [margin], updatedAt: new Date().toISOString() });
+          positions.set(strategyId, updated);
+          store.savePosition(strategyId, updated);
+          recordEvent({ timestamp: updated.updatedAt, positionId: updated.positionId, type: "MARGIN_UPDATED", reasonCode: null, details: { marginRatio: margin.marginRatio, perpSizeBtc: margin.perpSizeBtc, equityUsd: margin.equityUsd, explanation: `Perp now ${margin.perpSizeBtc} BTC; real margin ratio ${Number(margin.marginRatio).toFixed(2)}.` }, source: margin.source });
+        })().catch((error) => app.log.warn({ err: error, strategyId }, "Margin refresh failed"));
+      }, delay).unref();
+    }
+  }
+
+  if (liveMode() && !demoMode() && deps.risk && deps.treasury && deps.venues) {
     monitorTimer = setInterval(() => {
       for (const { strategyId, position } of store.listPositions()) {
         if (position.state === "OPEN" || position.state === "PARTIAL") {
@@ -365,12 +430,76 @@ export function buildApp(deps: Dependencies = {}) {
   });
 
   app.post<{ Params: { id: string }; Body: { shockPct?: string } }>("/api/demo/:id/shock", async (request, reply) => {
-    if (process.env.DEMO_MODE !== "true") return reply.code(403).send({ error: "Shock controls are available only in demo mode" });
+    if (!demoMode()) return reply.code(403).send({ error: "Shock controls are available only in demo mode" });
+    if (liveMode() && !hasBearer(request.headers.authorization)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
     const shockPct = request.body?.shockPct ?? "-8";
     if (!/^-?\d+(\.\d+)?$/.test(shockPct)) return reply.code(400).send({ error: "shockPct must be a decimal string" });
+    demoShocks.set(request.params.id.startsWith("pos_") ? request.params.id.slice(4) : request.params.id, shockPct);
     try { return await monitorPosition(request.params.id, shockPct); }
     catch (error) { return reply.code(503).send({ error: error instanceof Error ? error.message : "Shock evaluation failed" }); }
   });
+
+  // Demo reset (Section 17): clears the orchestrator's plans, orders, events and risk state and
+  // starts a new run id, so the next demo:open sends fresh client order ids. It does not touch
+  // venue positions or the vault.
+  app.post("/api/demo/reset", async (request, reply) => {
+    if (!demoMode()) return reply.code(403).send({ error: "Reset is available only in demo mode" });
+    if (liveMode() && !hasBearer(request.headers.authorization)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
+    quoted.clear(); approvals.clear(); positions.clear(); rescueRequests.clear(); riskStates.clear(); demoShocks.clear();
+    const runId = store.reset();
+    return { ok: true, runId };
+  });
+
+  // Demo flatten: close every Derive testnet position (main and perp) with reduce-only IOC orders
+  // priced up to 1% through the book, so the next demo:open starts flat and the rescue band holds.
+  // Gemini sandbox contracts are left to settle. DEMO_MODE only; bearer required with live venues.
+  app.post("/api/demo/flatten", async (request, reply) => {
+    if (!demoMode()) return reply.code(403).send({ error: "Flatten is available only in demo mode" });
+    if (liveMode() && !hasBearer(request.headers.authorization)) return reply.code(401).header("www-authenticate", "Bearer").send({ error: "Unauthorized" });
+    if (!deps.venues) return reply.code(503).send({ error: "Venue service is not available" });
+    const results: Array<{ instrumentId: string; account: string; quantity: string; state: string; venueOrderId: string | null; error?: string }> = [];
+    let i = 0;
+    for (const account of ["main", "perp"] as const) {
+      for (const position of await deps.venues.getPositions("DERIVE", account)) {
+        const qty = Number(position.quantity);
+        if (!qty) continue;
+        const side = qty > 0 ? "SELL" : "BUY";
+        try {
+          const quote = await deps.venues.getQuote("DERIVE", position.instrumentId, "testnet");
+          const tick = position.instrumentId.includes("PERP") ? 0.1 : 1;
+          const ref = side === "SELL" ? quote.bid : quote.ask;
+          if (!ref) throw new Error(`no ${side === "SELL" ? "bid" : "ask"} on the book`);
+          const limit = side === "SELL" ? Math.floor((Number(ref) * 0.99) / tick) * tick : Math.ceil((Number(ref) * 1.01) / tick) * tick;
+          const order = await deps.venues.placeOrder(OrderRequest.parse({
+            clientOrderId: `flat-${Date.now()}-${i++}`, strategyId: "demo_flatten", legId: "FLATTEN", venue: "DERIVE", account,
+            instrumentId: position.instrumentId, side, quantity: Math.abs(qty).toString(), limitPrice: limit.toFixed(tick === 1 ? 0 : 1), reduceOnly: true,
+          }));
+          results.push({ instrumentId: position.instrumentId, account, quantity: order.filledQuantity, state: order.state, venueOrderId: order.venueOrderId });
+        } catch (error) {
+          results.push({ instrumentId: position.instrumentId, account, quantity: position.quantity, state: "FAILED", venueOrderId: null, error: error instanceof Error ? error.message : String(error) });
+        }
+      }
+    }
+    return { results };
+  });
+
+  // After a decision on a rescue request, run one monitor tick at the shock the demo is holding,
+  // so a decline leads straight to the reduce-only order (Section 16 step 8).
+  const recordDecision = (item: TransferRequest) => recordEvent({
+    timestamp: new Date().toISOString(), positionId: `pos_${item.strategyId}`, type: "TRANSFER_REQUEST_UPDATED",
+    reasonCode: item.state, details: item, source: item.source,
+  });
+
+  const followUp = async (requestId: string) => {
+    for (const [strategyId, item] of rescueRequests) {
+      if (item.requestId !== requestId) continue;
+      const shock = demoShocks.get(strategyId);
+      if (!demoMode() || shock === undefined) return null;
+      try { return await monitorPosition(strategyId, shock); }
+      catch (error) { app.log.error({ err: error, strategyId }, "Follow-up monitor failed"); return null; }
+    }
+    return null;
+  };
 
   app.post<{ Params: { id: string }; Body: { approved?: boolean } }>("/api/treasury/requests/:id/decision", async (request, reply) => {
     if (!deps.decideMockRequest || process.env.DEMO_MODE !== "true" || (process.env.TREASURY_MODE ?? "mock") !== "mock") {
@@ -380,7 +509,9 @@ export function buildApp(deps: Dependencies = {}) {
     try {
       const updated = deps.decideMockRequest(request.params.id, request.body.approved);
       for (const [positionId, item] of rescueRequests) if (item.requestId === request.params.id) rescueRequests.set(positionId, updated);
-      return updated;
+      recordDecision(updated);
+      const followUpResult = request.body.approved ? null : await followUp(request.params.id);
+      return { ...updated, followUp: followUpResult };
     } catch (error) {
       return reply.code(404).send({ error: error instanceof Error ? error.message : "Unknown approval request" });
     }
@@ -403,7 +534,8 @@ export function buildApp(deps: Dependencies = {}) {
         ? deps.decideMockRequest(request.params.id, false)
         : await deps.treasury.cancelRequest(request.params.id);
       for (const [positionId, item] of rescueRequests) if (item.requestId === request.params.id) rescueRequests.set(positionId, result);
-      return result;
+      recordDecision(result);
+      return { ...result, followUp: await followUp(request.params.id) };
     } catch (error) {
       return reply.code(404).send({ error: error instanceof Error ? error.message : "Unable to decline request" });
     }
@@ -412,7 +544,9 @@ export function buildApp(deps: Dependencies = {}) {
   app.get("/api/treasury", async (_request, reply) => {
     if (!deps.treasury) return reply.code(503).send({ error: "Treasury service is not available" });
     const openRequests = [...rescueRequests.values()].filter((item) => ["REQUESTED", "OWNER_APPROVAL_NEEDED", "OWNER_APPROVED"].includes(item.state));
-    return { status: await deps.treasury.getTreasuryStatus(), openRequests };
+    const base = (process.env.PUBLIC_BASE_URL ?? "").replace(/\/$/, "");
+    const requests = [...rescueRequests.values()].map((item) => ({ ...item, approvalUrl: `${base}/approve/${item.requestId}` }));
+    return { status: await deps.treasury.getTreasuryStatus(), openRequests, requests };
   });
 
   app.post("/mcp", async (request, reply) => {
@@ -441,7 +575,15 @@ export function buildApp(deps: Dependencies = {}) {
       quotePayoff: (text) => apiPost("/api/strategies/quote", { text }),
       approveStrategy: (strategyId, versionHash) => apiPost(`/api/strategies/${encodeURIComponent(strategyId)}/approve`, { versionHash }),
       executeStrategy: (strategyId) => apiPost(`/api/strategies/${encodeURIComponent(strategyId)}/execute`),
-      positionStatus: (id) => apiGet(`/api/positions/${encodeURIComponent(id)}`),
+      positionStatus: async (id) => {
+        const position = id
+          ? await apiGet<{ positionId: string }>(`/api/positions/${encodeURIComponent(id)}`)
+          : (await apiGet<Array<{ positionId: string }>>("/api/positions"))[0] ?? null;
+        const treasury = deps.treasury ? await apiGet<{ requests: Array<{ strategyId: string; state: string }> }>("/api/treasury").catch(() => null) : null;
+        const strategyId = position?.positionId.replace(/^pos_/, "");
+        const approvalRequests = (treasury?.requests ?? []).filter((item) => item.strategyId === strategyId);
+        return { position, approvalRequests, note: position ? undefined : "No open position yet." };
+      },
       transferRequestStatus: (requestId) => apiGet(`/api/treasury/requests/${encodeURIComponent(requestId)}`),
     });
     const transport = new NodeStreamableHTTPServerTransport({ sessionIdGenerator: undefined });

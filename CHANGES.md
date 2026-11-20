@@ -157,3 +157,15 @@ Format:
   - Gemini order ids exceed 2^53 and were silently rounded by `JSON.parse` (...723 became ...740, so the cancel said "not found"). Responses are now parsed losslessly, and cancels send the id as a string.
   - Derive's documented `depositToNewSubaccount` is not in the deployed ActionManager implementation. Funding uses `public/register_deposit_address` (manager 1, standard margin) plus a plain USDC transfer: `pnpm --filter @ttp/venues derive:fund <amount> [--yes]`.
 - Still unconfirmed: the Gemini prediction-market fee schedule (quotes still use `feeEstimateUsd: "0"`).
+
+## [Lane C session, 2026-11-19] Live rehearsal fixes (applied on lane-b, PR #28)
+- **Lane A file touched:** `packages/treasury/src/real.ts`. The public Arc RPC returned HTTP 429 while a receipt was being polled; the release had already reverted onchain, but the request was never filed. The viem transport now retries 8 times with backoff (`retryDelay` 400 ms), the public client polls every 2 s, and the 13 vault-event watchers poll every 15 s.
+- **Orchestrator** (`apps/api/src/app.ts`):
+  - Gemini orders get the `:NO`/`:YES` suffix from the leg type (per `conventions.ts`).
+  - Rescue sizes round up to Derive's BTC-PERP step of 0.0001 and minimum of 0.01, never past the position (Derive 11012).
+  - Reduce-only IOC sells go up to 1% through the bid (Derive 11009 at exactly the bid).
+  - Live perp entry may pay up to 0.5% over the quoted ask (a GTC at the ask got no fill).
+  - Reverted releases are logged as `RELEASE_REVERTED` with their tx hash.
+  - After a reduce-only fill, margin is re-read at 10 s and 25 s (Derive read lag).
+  - New `POST /api/demo/flatten`.
+- Evidence: `evidence/rehearsal-2026-11-19-*.json`.

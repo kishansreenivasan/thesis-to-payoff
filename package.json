@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@9.15.0",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r typecheck",
@@ -12,7 +14,10 @@
     "test:contracts": "cd contracts && forge test",
     "demo:mock": "tsx scripts/demo-mock.ts",
     "dev:api": "pnpm --filter @ttp/api dev",
-    "dev:web": "pnpm --filter @ttp/web dev"
+    "dev:web": "pnpm --filter @ttp/web dev",
+    "demo:open": "tsx --env-file-if-exists=.env scripts/demo-open.ts",
+    "demo:reset": "tsx --env-file-if-exists=.env scripts/demo-reset.ts",
+    "start": "pnpm --filter @ttp/api start:hosted"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

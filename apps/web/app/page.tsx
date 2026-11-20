@@ -1,23 +1,14 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { apiBase } from "../lib/client";
+import { SourceBadge } from "./badge";
+import { LivePanels } from "./live-panels";
 
-const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
 type Quote = { venue: string; instrumentId: string; bid: string | null; ask: string | null; source: string };
 type Plan = { strategyId: string; versionHash: string; modeledMaxLossUsd: string; legs: Array<{ legId: string; venue: string; instrumentId: string; quantity: string; limitPrice: string; executionMode: string }> };
 type Payoff = { btcPrices: string[]; pnlIfBigHike: string[]; pnlIfNoBigHike: string[]; maxLossLineUsd: string; notes: string[] };
 type QuoteResult = { plan: Plan; quotes: Quote[]; payoff: Payoff };
-const badge: Record<string, { label: string; background: string }> = {
-  TESTNET: { label: "DERIVE TESTNET", background: "#dceeff" },
-  SANDBOX: { label: "GEMINI SANDBOX", background: "#fff0cc" },
-  LIVE_MAINNET_READONLY: { label: "LIVE DATA · READ ONLY", background: "#e4f4e8" },
-  SIMULATED: { label: "SIMULATED", background: "#eee7ff" },
-};
-
-function SourceBadge({ source }: { source: string }) {
-  const item = badge[source] ?? { label: source, background: "#eceff1" };
-  return <span style={{ background: item.background, borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 700 }}>{item.label}</span>;
-}
 
 export default function Page() {
   const [text, setText] = useState("Bullish BTC into December, worried the Fed hikes more than expected on Dec 11. Max risk $500.");
@@ -45,10 +36,11 @@ export default function Page() {
     </section>
     <section style={{ ...card, marginTop: 18 }}><h2>Venue prices and sources</h2><p>These are separate venue feeds and contract types; compare their labels and units.</p><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 12 }}>
       <PriceCard title="Derive BTC-PERP" subtitle="BTC index / USD per BTC" quote={derive} />
-      <PriceCard title="Gemini Fed hike contract" subtitle="Contract probability / USD per contract" quote={fed} />
-      <PriceCard title="Gemini BTC threshold contract" subtitle="Contract probability / USD per contract" quote={binary} />
+      <PriceCard title="Gemini Fed hike contract (L3a)" subtitle="Live mainnet price · position SIMULATED, no order sent" quote={fed} />
+      <PriceCard title="Gemini BTC threshold contract (L3b)" subtitle="Real sandbox NO order · USD per contract" quote={binary} />
     </div></section>
     {result && <section style={{ ...card, marginTop: 18 }}><h2>Payoff grid <SourceBadge source="SIMULATED" /></h2><div style={{ overflowX: "auto" }}><table style={{ borderCollapse: "collapse", width: "100%" }}><thead><tr><th style={cell}>BTC at expiry</th><th style={cell}>Big Fed hike</th><th style={cell}>No big hike</th></tr></thead><tbody>{result.payoff.btcPrices.map((price, i) => <tr key={price}><td style={cell}>${price}</td><td style={cell}>${result.payoff.pnlIfBigHike[i]}</td><td style={cell}>${result.payoff.pnlIfNoBigHike[i]}</td></tr>)}</tbody></table></div><p>Modeled max loss line: {result.payoff.maxLossLineUsd} USD</p>{result.payoff.notes.map((note) => <p key={note} style={{ color: "#52606d" }}>{note}</p>)}</section>}
+    <LivePanels />
   </main>;
 }
 

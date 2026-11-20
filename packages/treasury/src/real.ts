@@ -67,8 +67,11 @@ function getClients(): Clients {
   } as const;
 
   const account = privateKeyToAccount(agentPrivateKey);
-  const publicClient = createPublicClient({ chain, transport: http(rpcUrl) });
-  const walletClient = createWalletClient({ account, chain, transport: http(rpcUrl) });
+  // The public Arc testnet RPC rate-limits (HTTP 429, seen 2026-11-19 while polling a receipt).
+  // viem retries 429s with exponential backoff; give it more room than the default 3 x 150 ms.
+  const transport = http(rpcUrl, { retryCount: 8, retryDelay: 400 });
+  const publicClient = createPublicClient({ chain, transport, pollingInterval: 2_000 });
+  const walletClient = createWalletClient({ account, chain, transport });
 
   clients = { account, publicClient, walletClient, usdcAddress, vaultAddress, settlementAddress };
   return clients;
@@ -322,6 +325,8 @@ function watchVaultEvents(onEvent: (e: ActivityEvent) => void): () => void {
       address: vaultAddress,
       abi: vaultAbi,
       eventName,
+      // 13 single-topic watchers share the rate-limited public RPC; poll them slowly.
+      pollingInterval: 15_000,
       onLogs: async (logs) => {
         for (const log of logs) {
           const block = log.blockNumber ? await publicClient.getBlock({ blockNumber: log.blockNumber }) : null;
