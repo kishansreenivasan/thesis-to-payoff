@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { useAccount, useConnect, useSwitchChain, useWriteContract } from "wagmi";
 import { arcTestnet, buildApproveRequestCall } from "@ttp/treasury/owner";
 import { api, apiBase } from "../../../lib/client";
@@ -58,6 +59,7 @@ export default function ApprovePage() {
 
   return (
     <main style={{ maxWidth: 620, margin: "48px auto", padding: 28, background: "white", borderRadius: 16, boxShadow: "0 8px 30px #10203014" }}>
+      <Link href="/" style={{ color: "#176b5b", fontWeight: 700 }}>Convex · dashboard</Link>
       <p style={{ color: "#52606d", textTransform: "uppercase", letterSpacing: 1 }}>Arc testnet · owner approval</p>
       <h1>Review treasury request</h1>
       {request ? <dl style={{ display: "grid", gridTemplateColumns: "150px 1fr", gap: 12, overflowWrap: "anywhere" }}>

@@ -1,4 +1,6 @@
-# Thesis-to-Payoff Agent
+# Convex
+
+![Convex: teal payoff curve and white wordmark on charcoal](apps/web/public/convex-logo.png)
 
 UBC Hackathon 2026 · DeFi and Onchain Applications · Arc · Gemini Prediction Markets · Grok Bot.
 
@@ -9,6 +11,12 @@ Type a market view in plain English. The agent builds a small multi-leg position
 **Agents and contributors: start at [AGENTS.md](AGENTS.md).** Full spec: [DESIGN.md](DESIGN.md). Human to-dos: [docs/HUMAN-TODO.md](docs/HUMAN-TODO.md).
 
 Current lane progress and blockers are tracked in [STATUS.md](STATUS.md). Demo runbook: [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md). Submission text: [docs/DEVPOST.md](docs/DEVPOST.md).
+
+**Live dashboard:** https://ttp-production-7410ea00.up.railway.app · **MCP:** `https://ttp-production-7410ea00.up.railway.app/mcp` (bearer authentication).
+
+Lane A/B implementation and Lane C's coordinator, monitoring/event log, dashboard and hosted MCP transport are merged into `main` through PR #28. Recorded rehearsals include filled Gemini sandbox and Derive testnet orders, an Arc approval request/cancel, and a filled reduce-only rescue order. See [rehearsal evidence](#rehearsal-evidence) and [current human tasks](docs/HUMAN-TODO.md). Credentials and hosting are configured; remaining demo constraints are sandbox liquidity, vault funding, and the teammate's Grok chat acceptance/export.
+
+The product name is Convex; repository paths, workspace package names and deployed contract identifiers retain their existing names.
 
 ## Architecture
 
@@ -112,7 +120,17 @@ The risk engine projects margin under fixed shocks and demo thresholds. Projecte
 
 ## Grok integration
 
-Grok Bot is the conversational front end. It connects to our hosted MCP server (`<PUBLIC_BASE_URL>/mcp`, bearer token) and calls `compile_thesis` with the fields it extracts from the user's text; deterministic code validates them and rejects anything unsupported, including a max risk the user did not state. Grok then calls `quote_payoff`, `approve_strategy`, `execute_strategy` and `position_status` (which returns open Arc approval requests with the owner link), but it cannot approve transfers or sign transactions: the owner approves from their own wallet on the approval page.
+Our server hosts the MCP tools; Grok runs in the teammate's Grok account and calls those tools. Connect to `https://ttp-production-7410ea00.up.railway.app/mcp` with bearer authentication using `MCP_BEARER_TOKEN`; no Grok/xAI API key is needed on the server. The endpoint has passed authenticated `tools/list`, while the teammate with Grok access owns the conversational acceptance test and chat export described in [the Grok handoff](docs/GROK-HANDOFF.md). Grok supplies thesis fields; deterministic code selects instruments, prices and sizes, and owner approvals are signed in the owner's wallet.
+
+## Rehearsal evidence
+
+- [Open](evidence/rehearsal-2026-11-19-open.json) and [reopen](evidence/rehearsal-2026-11-19-reopen.json): the Gemini sandbox leg, Derive call and Derive perp all reported FILLED; the position reported OPEN.
+- [Calibration](evidence/rehearsal-2026-11-19-calibrate.txt): a real perp account read projected a 1.3226 ratio under the simulated -15% stress, inside the rescue band.
+- [Rescue](evidence/rehearsal-2026-11-19-rescue.json): an Arc approval request, cancellation after decline, and a FILLED Derive reduce-only order.
+
+The shock and projected ratios remain simulated, as does the live-priced Fed position. Earlier Arc release and owner-approval evidence is linked above; the coordinated rescue recording followed the decline path.
+
+**Current demo constraints:** Gemini's BTC sandbox books have no YES bids on the checked strikes, preventing a fresh NO leg. The last vault read found 22 USDC total and 12 above reserve. Preserve already-open demo positions when liquidity is scarce, and follow [the runbook](docs/DEMO-SCRIPT.md) before new execution.
 
 ## Hosting (Railway)
 
