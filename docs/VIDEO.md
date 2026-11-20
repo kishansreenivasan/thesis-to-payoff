@@ -1,5 +1,13 @@
 # Convex video: easiest recording path
 
+## Examples for the recording
+
+- **Homepage / simple:** “I am bullish on Bitcoin into December, but I want some downside protection. Max risk $500.” This is the default composer text and builds a call, perp and Gemini BTC NO hedge.
+- **Grok / event-aware:** “Use Convex to build a strategy for this view: ‘Bullish BTC into December, worried the Fed hikes more than expected on Dec 11. Max risk $500.’ Show the legs, costs, and payoff scenarios. Ask for my approval before executing.” This keeps the Fed-hike concern in the chatbot and adds the modeled Fed hedge.
+- The Grok prompt is prepared in the signed-in chat as an unsent draft for recording. Sending it is the next user step; a fresh Grok response has not been captured for this draft.
+
+
+
 ## Verified button sequence (Nov 20)
 
 The complete interactive build → approve → execute → close flow passed browser checks against isolated fixtures. On the actual configured services, automatic access, live plan generation and **Approve plan** passed without a manual token. A fresh **Execute plan** was deliberately not clicked: the selected `GEMI-BTC2611302200-HI85000` book has one YES bid at 0.01 (one NO entry at 0.99) but no YES asks for a NO exit. The separate Arc precheck also still reports 22 USDC total / 12 above reserve, insufficient for the full approved-release rehearsal. The decline path does not itself require that release funding.

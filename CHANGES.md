@@ -1,5 +1,13 @@
 # CHANGES
 
+## 2026-11-20 — Sid: separate homepage and chatbot examples
+
+- Homepage defaults to the simpler bullish-BTC/downside-protection thesis with a $500 risk budget (three legs).
+- Prepared the original $500 Fed-hike thesis in the existing signed-in Grok chat as an unsent draft, asking for plan review before execution. Recording guidance now separates the two examples. No new orders were placed.
+- Validation: production Next build; the simpler prompt had already returned a valid live three-leg quote. The historical evidence remains unchanged.
+
+
+
 ## 2026-11-20 — Sid: video walkthrough verification
 
 - Verified the current local browser connects through server configuration with no token field. Clicked live **Build strategy** and **Approve plan** successfully; **Execute plan** becomes enabled. No new external order was submitted because the selected Gemini NO has entry liquidity for only one contract and no exit liquidity.

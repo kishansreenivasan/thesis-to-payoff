@@ -13,6 +13,14 @@ Our Railway server hosts the API, dashboard and MCP tools. Grok runs in the conn
 
 If the teammate already configured this connector, use that existing connection. No new account or API key is needed.
 
+## Recording example
+
+The homepage now starts with the simpler bullish-BTC/downside-protection prompt. Use the original Fed-hike thesis in the actual Grok chat:
+
+> Use Convex to build a strategy for this view: “Bullish BTC into December, worried the Fed hikes more than expected on Dec 11. Max risk $500.” Show the legs, costs, and payoff scenarios. Ask for my approval before executing.
+
+The signed-in conversation has this prompt prepared as an unsent draft. The existing acceptance transcript remains a separate completed conversation result; no new tool execution is claimed for the unsent draft.
+
 ## Acceptance test inside Grok
 
 1. Confirm the custom connector is connected/enabled in the teammate's Grok session.

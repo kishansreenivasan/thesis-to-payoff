@@ -14,7 +14,7 @@ type Payoff = { btcPrices: string[]; pnlIfBigHike: string[]; pnlIfNoBigHike: str
 type QuoteResult = { plan: Plan; quotes: Quote[]; payoff: Payoff };
 
 export default function Page() {
-  const [text, setText] = useState("Bullish BTC into December, worried the Fed hikes more than expected on Dec 11. Max risk $500.");
+  const [text, setText] = useState("I am bullish on Bitcoin into December, but I want some downside protection. Max risk $500.");
   const [result, setResult] = useState<QuoteResult | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
